@@ -1,0 +1,20 @@
+<h4>My Projects</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @projects.each do |project| %>
+      <tr>
+        <td><%= project[:name] %></td>
+        <td>_[<%= project[:description] %>]</td>
+        <td><a href="/Ticket/Create/<%= project[:id] %>">Create A Ticket</a></td>
+        <td><a href="/Project/<%= project[:id] %>">Details</a></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
