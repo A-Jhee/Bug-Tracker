@@ -1,3 +1,4 @@
+require "dotenv/load"
 require "sinatra"
 require "sinatra/content_for"
 require "tilt/erubis"
