@@ -1,0 +1,78 @@
+<h1>Edit Ticket</h1>
+
+<h2>Make changes to ticket properties</h2>
+       
+<dl class="enlarge">
+  <dt>Project</dt>
+  <dd>"<%= @project_name %>"</dd>
+</dl>
+
+<form class="enlarge" method="post" action="/tickets/<%= params[:id] %>">
+  <fieldset>
+    <label>
+      Title
+      <input type="text" name="title" autocompelte="off" value="<%= params[:title] || @ticket["title"] %>" size="35" required />
+    </label>
+    <label>
+      Description
+      <input type="text" name="description" autocompelte="off" value="<%= params[:description] || @ticket["description"] %>" size="60" />
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <label>
+      Ticket Priority
+      <select name="priority">
+        <% @priorities.each do |importance| %>
+          <% if importance == @ticket["priority"] %>
+            <option selected="selected"><%= importance %></option>
+          <% else %>
+            <option><%= importance %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+    <label>
+      Ticket Status
+      <select name="status">
+        <% @statuses.each do |sitrep| %>
+          <% if sitrep == @ticket["status"] %>
+            <option selected="selected"><%= sitrep %></option>
+          <% else %>
+            <option><%= sitrep %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <label>
+      Ticket Type
+      <select name="type">
+        <% @types.each do |category| %>
+          <% if category == @ticket["type"] %>
+            <option selected="selected"><%= category %></option>
+          <% else %>
+            <option><%= category %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+    <label>
+      Assigned Developer
+      <select name="developer_id">
+        <% @developers.each do |developer| %>
+          <% if developer["id"] == @ticket["developer_id"] %>
+            <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
+          <% else %>
+            <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+  </fieldset>
+
+  <a href="/tickets">Back to Tickets List</a>
+  <button type="submit">Update Ticket</button>
+</form>

@@ -1,3 +1,4 @@
 # Ignore .env file used in dotenv gem/shim 
 #    to set local development ENV variables
 .env
+scratchpaper.rb

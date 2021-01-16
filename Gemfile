@@ -7,7 +7,12 @@ gem "sinatra-contrib"
 gem "erubis"
 
 gem "pg"
-gem "pry"
+gem "dotenv"
+gem "time"
+gem "securerandom"
+gem "rack-test"
+gem "minitest"
+gem "minitest-reporters"
 
 # group :production do
 #   gem "puma"

@@ -1,7 +1,16 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    ansi (1.5.0)
+    builder (3.2.4)
+    dotenv (2.7.6)
     erubis (2.7.0)
+    minitest (5.14.3)
+    minitest-reporters (1.4.2)
+      ansi
+      builder
+      minitest (>= 5.0)
+      ruby-progressbar
     multi_json (1.15.0)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
@@ -9,7 +18,11 @@ GEM
     rack (2.2.3)
     rack-protection (2.1.0)
       rack
+    rack-test (1.1.0)
+      rack (>= 1.0, < 3)
+    ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.2)
+    securerandom (0.1.0)
     sinatra (2.1.0)
       mustermann (~> 1.0)
       rack (~> 2.2)
@@ -22,15 +35,22 @@ GEM
       sinatra (= 2.1.0)
       tilt (~> 2.0)
     tilt (2.0.10)
+    time (0.1.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  dotenv
   erubis
+  minitest
+  minitest-reporters
   pg
+  rack-test
+  securerandom
   sinatra (~> 2.1.0)
   sinatra-contrib
+  time
 
 RUBY VERSION
    ruby 2.6.3p62

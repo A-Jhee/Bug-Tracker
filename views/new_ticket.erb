@@ -1,0 +1,88 @@
+<h1>Create Ticket</h1>
+
+<h2>Submit a bug or a request</h2>
+
+<form class="enlarge" method="post" action="/tickets">
+  <fieldset>
+    <label>
+      Project
+      <select name="project_id" required>
+        <% if @project_id %>
+          <% @projects.each do |project| %>
+            <% if project["id"] == @project_id %>
+              <option value="<%= project["id"] %>" selected="selected"><%= project["name"] %></option>
+            <% else %>
+              <option value="<%= project["id"] %>"><%= project["name"] %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <option value="" disable selected>--Select Project--</option>
+            <% @projects.each do |project| %>
+              <option value="<%= project["id"] %>"><%= project["name"] %></option>
+            <% end %>
+        <% end %>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <label>
+      Ticket Priority
+      <select name="priority" required>
+        <% if @priority %>
+          <% @priorities.each do |importance| %>
+            <% if importance == @priority %>
+              <option selected="selected"><%= importance %></option>
+            <% else %>
+              <option><%= importance %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <% @priorities.each_with_index do |importance, ind| %>
+            <% if ind == 0 %>
+              <option selected="selected"><%= importance %></option>              
+            <% else %>
+              <option><%= importance %></option>
+            <% end %>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <label>
+      Ticket Type
+      <select name="type" required>
+        <% if @type %>
+          <% @types.each do |category| %>
+            <% if category == @type %>
+              <option selected="selected"><%= category %></option>
+            <% else %>
+              <option><%= category %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <option value="" disable selected>--Select Ticket Type--</option>
+          <% @types.each_with_index do |category, ind| %>
+            <option><%= category %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <label>
+      Title
+      <input type="text" name="title" autocompelte="off" value="<%= params[:title] || "" %>" size="35" maxlength="100" required />
+    </label>
+    <label>
+      Description
+      <input type="text" name="description" autocompelte="off" value="<%= params[:description] || "n/a" %>" size="60" maxlength="300" required />
+    </label>
+  </fieldset>
+
+  <a href="/tickets">Back to Tickets List</a>
+  <button type="submit">Create Ticket</button>
+</form>

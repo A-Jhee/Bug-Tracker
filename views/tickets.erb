@@ -1,0 +1,35 @@
+<a class="make_bold" href="/tickets/new">CREATE A TICKET</a>
+
+<table class="reg_table">
+  <tr>
+    <th>Title</th>
+    <th>Project Name</th>
+    <th>Developer Assigned</th>
+    <th>Ticket Priority</th>
+    <th>Ticket Status</th>
+    <th>Ticket Type</th>
+    <th>Created On</th>
+    <th></th>
+  </tr>
+  <% @tickets.each do |ticket| %>
+    <tr>
+      <td><%= ticket["title"] %></td>
+      <td><%= ticket["project_name"] %></td>
+      <td><%= ticket["dev_name"] %></td>
+      <td><%= ticket["priority"] %></td>
+      <td><%= ticket["status"] %></td>
+      <td><%= ticket["type"] %></td>
+      <td><%= parse_timestamp(ticket["created_on"]) %></td>
+      <td>
+        <ul>
+          <li>
+            <a href="/tickets/<%= ticket["id"] %>/edit">Edit/Assign</a>
+          </li>
+          <li>
+            <a href="#">Details</a>
+          </li>
+        </ul>
+      </td>
+    </tr>
+  <% end %>
+</table>

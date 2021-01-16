@@ -1,19 +1,28 @@
-<h4>My Projects</h4>
+<h4 class="make_bold">My Projects</h4>
 
-<table>
+<table class="reg_table">
   <thead>
     <tr>
       <th>Name</th>
       <th>Description</th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
     <% @projects.each do |project| %>
       <tr>
-        <td><%= project[:name] %></td>
-        <td>_[<%= project[:description] %>]</td>
-        <td><a href="/Ticket/Create/<%= project[:id] %>">Create A Ticket</a></td>
-        <td><a href="/Project/<%= project[:id] %>">Details</a></td>
+        <td><%= project["name"] %></td>
+        <td><%= project["description"] %></td>
+        <td>
+          <ul>
+            <li>
+              <a href="/tickets/new/<%= project["id"] %>">Create A Ticket</a>
+            </li>
+            <li>
+              <a href="/projects/<%= project["id"] %>">Details</a>
+            </li>
+          </ul>
+        </td>
       </tr>
     <% end %>
   </tbody>
