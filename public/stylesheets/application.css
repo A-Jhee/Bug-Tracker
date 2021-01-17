@@ -54,7 +54,19 @@ body {
   color: white;
 }
 
+.reg_table.resolved  th {
+  background-color: #c41c0a;
+}
+
 .make_bold {
   color: red;
   font-size: 2em;
+}
+
+.properties dt {
+  color: green;
+}
+
+.properties dd {
+  padding-left: 15px;
 }

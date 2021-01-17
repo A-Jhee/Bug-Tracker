@@ -255,7 +255,7 @@ class BugtrackerTest < Minitest::Test
     post "/tickets/4", {title: "Finance manager roadmap",
                          description: "Draw up a rough draft for finance manager app roadmap",
                          priority: "Critical", status: "Add. Info Required", 
-                         type: "Error/Bug Report", developer_id: "5"}
+                         type: "Bug/Error Report", developer_id: "5"}
 
     assert_equal 302, last_response.status
     assert_equal "You have successfully made changes to a ticket.", session[:success]
@@ -263,21 +263,21 @@ class BugtrackerTest < Minitest::Test
     get last_response["Location"]
     assert_includes last_response.body, "Critical"
     assert_includes last_response.body, "Add. Info Required"
-    assert_includes last_response.body, "Error/Bug Report"
+    assert_includes last_response.body, "Bug/Error Report"
     assert_includes last_response.body, "TEST_Developer"
   end
 
   def test_post_tickets_id_with_invalid_title
     post "/tickets/4", {title: "     ",
                          description: "Draw up a rough draft for finance manager app roadmap",
-                         priority: "Critical", status: "Add. Info Required", type: "Error/Bug Report", 
+                         priority: "Critical", status: "Add. Info Required", type: "Bug/Error Report", 
                          developer_id: "5"}
 
     assert_equal 200, last_response.status
     assert_includes last_response.body, "Make changes to ticket properties"
     assert_includes last_response.body, "Ticket title must be between 1 and 100 characters."
     assert_includes last_response.body, "Critical"
-    assert_includes last_response.body, "Error/Bug Report"
+    assert_includes last_response.body, "Bug/Error Report"
     assert_includes last_response.body, "Add. Info Required"
     assert_includes last_response.body, "     "
     assert_includes last_response.body, "TEST_Developer"
@@ -286,12 +286,28 @@ class BugtrackerTest < Minitest::Test
   def test_post_tickets_id_with_invalid_description
     post "/tickets/4", {title: "Finance manager roadmap",
                          description: "     ",
-                         priority: "Critical", status: "Add. Info Required", type: "Error/Bug Report", 
+                         priority: "Critical", status: "Add. Info Required", type: "Bug/Error Report", 
                          developer_id: "5"}
 
     assert_equal 200, last_response.status
     assert_includes last_response.body, "Make changes to ticket properties"
     assert_includes last_response.body, "Ticket description must be between 1 and 300 characters."
     assert_includes last_response.body, "     "
+  end
+
+  def test_post_delete_ticket
+    # ticket 1 ('Open', 'Unable to login',
+      # 'Create a login functionality with 4 demo logins',
+      # 'Feature Request', 'Low', 4, 1, 3)
+
+    post "/tickets/1/destroy"
+
+    assert_equal 302, last_response.status
+    assert_equal "The ticket has been deleted.", session[:success]
+
+    get last_response["Location"]
+    assert_equal 200, last_response.status
+    refute_includes last_response.body, "Unable to login"
+    refute_includes last_response.body, "Create a login functionality with 4 demo logins"
   end
 end

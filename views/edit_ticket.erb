@@ -20,26 +20,48 @@
   </fieldset>
 
   <fieldset>
+
     <label>
       Ticket Priority
       <select name="priority">
-        <% @priorities.each do |importance| %>
-          <% if importance == @ticket["priority"] %>
-            <option selected="selected"><%= importance %></option>
-          <% else %>
-            <option><%= importance %></option>
+        <% if @priority %>
+          <% @priorities.each do |importance| %>
+            <% if importance == @priority %>
+              <option selected="selected"><%= importance %></option>
+            <% else %>
+              <option><%= importance %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <% @priorities.each do |importance| %>
+            <% if importance == @ticket["priority"] %>
+              <option selected="selected"><%= importance %></option>
+            <% else %>
+              <option><%= importance %></option>
+            <% end %>
           <% end %>
         <% end %>
       </select>
     </label>
+
     <label>
       Ticket Status
       <select name="status">
-        <% @statuses.each do |sitrep| %>
-          <% if sitrep == @ticket["status"] %>
-            <option selected="selected"><%= sitrep %></option>
-          <% else %>
-            <option><%= sitrep %></option>
+        <% if @status %>
+          <% @statuses.each do |sitrep| %>
+            <% if sitrep == @status %>
+              <option selected="selected"><%= sitrep %></option>
+            <% else %>
+              <option><%= sitrep %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <% @statuses.each do |sitrep| %>
+            <% if sitrep == @ticket["status"] %>
+              <option selected="selected"><%= sitrep %></option>
+            <% else %>
+              <option><%= sitrep %></option>
+            <% end %>
           <% end %>
         <% end %>
       </select>
@@ -50,23 +72,43 @@
     <label>
       Ticket Type
       <select name="type">
-        <% @types.each do |category| %>
-          <% if category == @ticket["type"] %>
-            <option selected="selected"><%= category %></option>
-          <% else %>
-            <option><%= category %></option>
+        <% if @type %>
+          <% @types.each do |category| %>
+            <% if category == @type %>
+              <option selected="selected"><%= category %></option>
+            <% else %>
+              <option><%= category %></option>
+            <% end %>
           <% end %>
-        <% end %>
+        <% else %>
+          <% @types.each do |category| %>
+            <% if category == @ticket["type"] %>
+              <option selected="selected"><%= category %></option>
+            <% else %>
+              <option><%= category %></option>
+            <% end %>
+          <% end %>
+        <% end %>        
       </select>
     </label>
     <label>
       Assigned Developer
       <select name="developer_id">
-        <% @developers.each do |developer| %>
-          <% if developer["id"] == @ticket["developer_id"] %>
-            <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
-          <% else %>
-            <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+        <% if @developer_id %>
+          <% @developers.each do |developer| %>
+            <% if developer["id"] == @developer_id %>
+              <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
+            <% else %>
+              <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+            <% end %>
+          <% end %>
+        <% else %>
+          <% @developers.each do |developer| %>
+            <% if developer["id"] == @ticket["developer_id"] %>
+              <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
+            <% else %>
+              <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+            <% end %>
           <% end %>
         <% end %>
       </select>

@@ -1,4 +1,4 @@
-<a class="make_bold" href="/tickets/new">CREATE A TICKET</a>
+<a class="make_bold" href="/tickets/new/">CREATE A TICKET</a>
 
 <table class="reg_table">
   <tr>
@@ -11,7 +11,7 @@
     <th>Created On</th>
     <th></th>
   </tr>
-  <% @tickets.each do |ticket| %>
+  <% @unresolved_tickets.each do |ticket| %>
     <tr>
       <td><%= ticket["title"] %></td>
       <td><%= ticket["project_name"] %></td>
@@ -23,10 +23,58 @@
       <td>
         <ul>
           <li>
+            <a href="/tickets/<%= ticket["id"] %>">Details</a>
+          </li>
+          <li>
             <a href="/tickets/<%= ticket["id"] %>/edit">Edit/Assign</a>
           </li>
           <li>
-            <a href="#">Details</a>
+            <form class="delete" method="post" action="/tickets/<%= ticket["id"] %>/destroy">
+              <button class="delete" type="submit">Delete Ticket</button>
+            </form>
+          </li>
+        </ul>
+      </td>
+    </tr>
+  <% end %>
+</table>
+
+<br>
+<br>
+
+<h3>Resolved Tickets</h3>
+<table class="reg_table resolved">
+  <tr>
+    <th>Title</th>
+    <th>Project Name</th>
+    <th>Developer Assigned</th>
+    <th>Ticket Priority</th>
+    <th>Ticket Status</th>
+    <th>Ticket Type</th>
+    <th>Created On</th>
+    <th></th>
+  </tr>
+  <% @resolved_tickets.each do |ticket| %>
+    <tr>
+      <td><%= ticket["title"] %></td>
+      <td><%= ticket["project_name"] %></td>
+      <td><%= ticket["dev_name"] %></td>
+      <td><%= ticket["priority"] %></td>
+      <td><%= ticket["status"] %></td>
+      <td><%= ticket["type"] %></td>
+      <td><%= parse_timestamp(ticket["created_on"]) %></td>
+      <td>
+        <ul>
+          <li>
+            <a href="/tickets/<%= ticket["id"] %>">Details</a>
+          </li>
+          <li>
+            <a href="/tickets/<%= ticket["id"] %>/edit">Edit/Assign</a>
+          </li>
+          <li>
+            <form class="delete" method="post" action="/tickets/<%= ticket["id"] %>/destroy">
+              <button class="delete" type="submit">Delete Ticket</button>
+            </form>
           </li>
         </ul>
       </td>

@@ -61,6 +61,16 @@ CREATE TABLE users (
   email text NOT NULL
 );
 
+-- DUMMY USERS FOR DEVELOPMENT/TESTING
+-- INSERT INTO users (id, name, role, email)
+--   VALUES (0, 'Unassigned', 'Unassigned', 'Unassigned');
+
+-- INSERT INTO users (name, role, email)
+--   VALUES ('DEMO_Admin', 'admin', 'admin@demonstration.com'),
+--          ('DEMO_ProjectManager', 'project_manager', 'project_manager@demonstration.com'),
+--          ('DEMO_Developer', 'developer', 'developer@demonstration.com'),
+--          ('DEMO_QualityAssurance', 'quality_assurance', 'quality_assurance@demonstration.com');
+
 ----------------------------------------------------------------------------
 -- STATEMENTS RELATED TO PROJECTS TABLE ------------------------------------
 
@@ -156,15 +166,7 @@ CREATE TABLE ticket_attachments (
 
 -- STATEMENT CRAFTING TABLE ------------------------------------------------------------
 
--- INSERT INTO users (id, name, role, email)
---   VALUES (0, 'Unassigned', 'Unassigned', 'Unassigned');
-
--- INSERT INTO users (name, role, email)
---   VALUES ('DEMO_Admin', 'admin', 'admin@demonstration.com'),
---          ('DEMO_ProjectManager', 'project_manager', 'project_manager@demonstration.com'),
---          ('DEMO_Developer', 'developer', 'developer@demonstration.com'),
---          ('DEMO_QualityAssurance', 'quality_assurance', 'quality_assurance@demonstration.com');
-
+-- DELETE FROM ticket_comments WHERE ticket_id = $1;
 
 -- PUSH DOWN TO NEAR END OF FILE ------------------------------------------------------------
 

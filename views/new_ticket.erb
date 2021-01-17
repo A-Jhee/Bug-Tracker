@@ -2,26 +2,30 @@
 
 <h2>Submit a bug or a request</h2>
 
-<form class="enlarge" method="post" action="/tickets">
+<form class="enlarge" method="post" action="/tickets/new/<%= @splat_id %>">
   <fieldset>
     <label>
       Project
-      <select name="project_id" required>
-        <% if @project_id %>
-          <% @projects.each do |project| %>
-            <% if project["id"] == @project_id %>
-              <option value="<%= project["id"] %>" selected="selected"><%= project["name"] %></option>
-            <% else %>
-              <option value="<%= project["id"] %>"><%= project["name"] %></option>
-            <% end %>
-          <% end %>
-        <% else %>
-          <option value="" disable selected>--Select Project--</option>
+      <% if @project_name %>
+        <h3>"<%= @project_name %>"</h3>
+      <% else %>
+        <select name="project_id" required>
+          <% if @project_id %>
             <% @projects.each do |project| %>
-              <option value="<%= project["id"] %>"><%= project["name"] %></option>
+              <% if project["id"] == @project_id %>
+                <option value="<%= project["id"] %>" selected="selected"><%= project["name"] %></option>
+              <% else %>
+                <option value="<%= project["id"] %>"><%= project["name"] %></option>
+              <% end %>
             <% end %>
-        <% end %>
-      </select>
+          <% else %>
+            <option value="" disable selected>--Select Project--</option>
+              <% @projects.each do |project| %>
+                <option value="<%= project["id"] %>"><%= project["name"] %></option>
+              <% end %>
+          <% end %>
+        </select>
+      <% end %>
     </label>
   </fieldset>
 

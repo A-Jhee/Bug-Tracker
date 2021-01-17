@@ -1,0 +1,117 @@
+<section id="details">
+  <h3>Details for Ticket #<%= params[:id] %></h3>
+  <dl class="properties">
+    <dt>
+      TICKET TITLE
+    </dt>
+    <dd>
+      <%= @ticket["title"] %>
+    </dd>
+
+    <dt>
+      TICKET DESCRIPTION
+    </dt>
+    <dd>
+      <%= @ticket["description"] %>
+    </dd>
+
+    <dt>
+      ASSIGNED DEVELOPER
+    </dt>
+    <dd>
+      <%= @developer_name %>
+    </dd>
+
+    <dt>
+      SUBMITTER
+    </dt>
+    <dd>
+      <%= @submitter_name %>
+    </dd>
+
+    <dt>
+      PROJECT
+    </dt>
+    <dd>
+      <%= @project_name %>
+    </dd>
+
+    <dt>
+      TICKET PRIORITY
+    </dt>
+    <dd>
+      <%= @ticket["priority"] %>
+    </dd>
+
+    <dt>
+      TICKET STATUS
+    </dt>
+    <dd>
+      <%= @ticket["status"] %>
+    </dd>
+
+    <dt>
+      TICKET TYPE
+    </dt>
+    <dd>
+      <%= @ticket["type"] %>
+    </dd>
+
+    <dt>
+      CREATED
+    </dt>
+    <dd>
+      <%= parse_timestamp(@ticket["created_on"]) %>
+    </dd>
+
+    <dt>
+      UPDATED
+    </dt>
+    <dd>
+      <%= parse_timestamp(@ticket["updated_on"]) %>
+    </dd>
+  </dl>
+</section>
+
+<br>
+
+<section id="comments">
+  <form action="/tickets/<%= params[:id] %>/comment" method="post">
+    <dl>
+      <dt>
+        <label for="comment">Comments</label>
+      </dt>
+      <dd>
+        <input name="comment" placeholder="Leave your comments here." type="text" value="<%= params[:comment] || "" %>" size="60" />
+      </dd>
+    </dl>
+    <button type="submit">Add Comment</button>
+  </form>
+
+  <br>
+
+  <table class="reg_table">
+    <tr>
+      <th>Commenter</th>
+      <th>Message</th>
+      <th>Created On</th>
+      <th></th>
+    </tr>
+
+    <% @comments.each do |comment| %>
+      <tr>
+        <td><%= comment["commenter"] %></td>
+        <td><%= comment["message"] %></td>
+        <td><%= parse_timestamp(comment["created_on"]) %></td>
+        <td>
+          <form class="delete" method="post" action="/tickets/<%= params[:id] %>/comment/<%= comment["id"] %>/destroy">
+            <button class="delete" type="submit">Delete Comment</button>
+          </form>
+        </td>
+      </tr>
+    <% end %>
+    
+  </table>
+</section>
+
+<a href="/tickets">Back to Tickets List</a>

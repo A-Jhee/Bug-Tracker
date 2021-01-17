@@ -21,6 +21,12 @@ class DatabasePersistence
     result
   end
 
+  def get_user_name(user_id)
+    sql = "SELECT name FROM users WHERE id=$1"
+    result = query(sql, user_id)
+    result.values.flatten[0]
+  end
+
   def create_project(project_name, description)
     sql = "INSERT INTO projects (name, description) VALUES ($1, $2);"
     result = query(sql, project_name, description)
@@ -61,6 +67,11 @@ class DatabasePersistence
     query(sql, *updates.values)
   end
 
+  def delete_ticket(id)
+    sql = "DELETE FROM tickets WHERE id=$1;"
+    query(sql, id)
+  end
+
   def all_tickets
     sql = <<~SQL
       SELECT tickets.id,
@@ -77,6 +88,35 @@ class DatabasePersistence
         ORDER BY tickets.created_on DESC;
     SQL
     result = query(sql)
+
+    result
+  end
+
+  def create_comment(comment, commenter_id, ticket_id)
+    sql = "INSERT INTO ticket_comments (comment, commenter_id, ticket_id)
+            VALUES ($1, $2, $3);"
+    query(sql, comment, commenter_id, ticket_id)
+  end
+
+  def delete_comment(comment_id)
+    sql = "DELETE FROM ticket_comments WHERE id = $1;"
+    query(sql, comment_id)
+  end
+
+  def get_comments(ticket_id)
+    sql = <<~SQL
+      SELECT tc.id AS id,
+             tc.ticket_id AS ticket_id,
+             u.name AS commenter,
+             tc.comment AS message,
+             tc.created_on AS created_on
+        FROM ticket_comments AS tc
+        LEFT JOIN users AS u
+        ON tc.commenter_id = u.id
+        WHERE tc.ticket_id = $1
+        ORDER BY created_on DESC;
+    SQL
+    result = query(sql, ticket_id)
 
     result
   end

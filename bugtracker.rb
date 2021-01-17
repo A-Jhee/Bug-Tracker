@@ -57,8 +57,14 @@ helpers do
   end
 
   def error_for_description(description)
-    if !(1..100).cover? description.size
+    if !(1..300).cover? description.size
       "Ticket description must be between 1 and 300 characters."
+    end
+  end
+
+  def error_for_comment(comment)
+    if !(1..300).cover? comment.size
+      "Comment must be between 1 and 300 characters."
     end
   end
 end
@@ -91,28 +97,31 @@ get "/projects" do
   erb :projects, layout: :layout
 end
 
-# Show all tickets in database in a specific column field order
+# Show all tickets in database
+# column fields (Title, Project Name, Dev. Assigned, Priority, Type, Created On)
 get "/tickets" do
-  @tickets = @storage.all_tickets
+  tickets = @storage.all_tickets
+  @unresolved_tickets = tickets.select { |ticket| ticket["status"] != "Resolved" }
+  @resolved_tickets = tickets.select { |ticket| ticket["status"] == "Resolved" }
   erb :tickets, layout: :layout
 end
 
 # Render the new ticket form
-get "/tickets/new" do
+get "/tickets/new/*" do
+  @splat_id = params[:splat].first
   @types = DatabasePersistence::TICKET_TYPE
   @priorities = DatabasePersistence::TICKET_PRIORITY
   @projects = @storage.all_projects
+  @project_name = @storage.get_project_name(@splat_id) unless @splat_id.empty?
   erb :new_ticket, layout: :layout
 end
 
-# Create a new ticket from the "/projects" view for the specified project
-get "/tickets/new/:project_id" do
-  @project_name = @storage.get_project_name(params[:project_id])
-  erb :new_ticket_with_project_id, layout: :layout
-end
-
 # Create a new ticket
-post "/tickets" do
+# If routed with a number like so: "/tickets/new/12", then ticket
+# creation view is hardcoded with project name (cannot select project)
+# If routed without a number like so : "/tickets/new/", then ticket
+# creation view has select drop down menu for all projects available.
+post "/tickets/new/*" do
   title = params[:title].strip #ticket title REQ
   description = params[:description].strip #ticket description DEFAULT n/a REQ
   
@@ -124,23 +133,70 @@ post "/tickets" do
 
   @projects = @storage.all_projects
   @project_id = params[:project_id]
+  @splat_id = params[:splat].first
+  @project_name = @storage.get_project_name(@splat_id) unless @splat_id.empty?
 
   error = error_for_ticket_title(title) || error_for_description(description)
   if error
     session[:error] = error
     erb :new_ticket, layout: :layout
   else
+    # if splat_id exists, project_id will be nil, as it won't be a parameter
+    # of the post request.
+    final_project_id = @project_id ? @project_id : @splat_id
     # default developer_id to 0, or "Unassigned". project manager must assign dev.
     @storage.create_ticket('Open', title, description, @type,
-                            @priority, session[:user_id], @project_id, 0)
+                            @priority, session[:user_id], final_project_id, 0)
     session[:success] = "You have successfully submitted a new ticket."
     redirect "/tickets"
   end
 end
 
-# View a single ticket details
+# View a ticket details
+# includes: ticket properties, comments, attachments, update history.
 get "/tickets/:id" do
-  'Unfinished route'
+  ticket_id = params[:id]
+  @comments = @storage.get_comments(ticket_id)
+  @ticket = @storage.get_ticket_info(ticket_id)
+
+  @developer_name = @storage.get_user_name(@ticket["developer_id"])
+  @submitter_name = @storage.get_user_name(@ticket["submitter_id"])
+  @project_name = @storage.get_project_name(@ticket["project_id"])
+
+  erb :ticket, layout: :layout
+end
+
+# Post a ticket comment
+post "/tickets/:id/comment" do
+  comment = params[:comment].strip
+  ticket_id = params[:id]
+  @comments = @storage.get_comments(ticket_id)
+  @ticket = @storage.get_ticket_info(ticket_id)
+
+  @developer_name = @storage.get_user_name(@ticket["developer_id"])
+  @submitter_name = @storage.get_user_name(@ticket["submitter_id"])
+  @project_name = @storage.get_project_name(@ticket["project_id"])
+
+  error = error_for_comment(comment)
+  if error
+    session[:error] = error
+    erb :ticket, layout: :layout
+  else
+    @storage.create_comment(comment, session[:user_id], params[:id])
+    redirect "/tickets/#{ticket_id}"
+  end
+end
+
+# Delete a ticket commment
+post "/tickets/:id/comment/:comment_id/destroy" do
+  @storage.delete_comment(params[:comment_id])
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    session[:success] = "The ticket comment has been deleted."
+    "/tickets/#{params[:id]}"
+  else  # retain for testing purpose
+    session[:success] = "The ticket comment has been deleted."
+    redirect "/tickets/#{params[:id]}"
+  end
 end
 
 # Edit an existing ticket
@@ -155,11 +211,27 @@ get "/tickets/:id/edit" do
   erb :edit_ticket, layout: :layout
 end
 
+# Delete a ticket
+post "/tickets/:id/destroy" do
+  id = params[:id]
+
+  @storage.delete_ticket(id)
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    session[:success] = "The ticket has been deleted."
+    "/tickets"
+  else  # retain for testing purpose
+    session[:success] = "The ticket has been deleted."
+    redirect "/tickets"
+  end
+end
+
 # Update an existing ticket
 post "/tickets/:id" do
   @ticket = @storage.get_ticket_info(params[:id])
   @project_name = @storage.get_project_name(@ticket["project_id"])
+
   @developers = @storage.all_developers
+  @developer_id = params[:developer_id]
 
   title = params[:title].strip
   description = params[:description].strip
@@ -177,23 +249,22 @@ post "/tickets/:id" do
   if error
     session[:error] = error
     erb :edit_ticket, layout: :layout
-    halt
-  end
-
-  new_ticket_info = { "id" => params[:id], "title" => title, 
-    "description" => description, "priority" => params[:priority], 
-    "status" => params[:status], "type" => params[:type], "developer_id" => params[:developer_id] }
-
-  current_ticket_info = @storage.get_ticket_info(params[:id])
-
-  updates = get_updates_hash(new_ticket_info, current_ticket_info)
-
-  if updates
-    @storage.update_ticket(updates, params[:id])
-    session[:success] = "You have successfully made changes to a ticket."
-    redirect "/tickets"
   else
-    session[:error] = "You did not make any changes. Make any changes to this ticket, or you can return back to Tickets list."
-    redirect "/tickets/#{params[:id]}/edit"
+    new_ticket_info = { "id" => params[:id], "title" => title, 
+      "description" => description, "priority" => @priority, 
+      "status" => @status, "type" => @type, "developer_id" => @developer_id }
+
+    current_ticket_info = @storage.get_ticket_info(params[:id])
+
+    updates = get_updates_hash(new_ticket_info, current_ticket_info)
+
+    if updates
+      @storage.update_ticket(updates, params[:id])
+      session[:success] = "You have successfully made changes to a ticket."
+      redirect "/tickets"
+    else
+      session[:error] = "You did not make any changes. Make any changes to this ticket, or you can return back to Tickets list."
+      redirect "/tickets/#{params[:id]}/edit"
+    end
   end
 end
