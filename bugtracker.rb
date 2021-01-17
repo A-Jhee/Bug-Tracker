@@ -141,12 +141,9 @@ post "/tickets/new/*" do
     session[:error] = error
     erb :new_ticket, layout: :layout
   else
-    # if splat_id exists, project_id will be nil, as it won't be a parameter
-    # of the post request.
-    final_project_id = @project_id ? @project_id : @splat_id
     # default developer_id to 0, or "Unassigned". project manager must assign dev.
     @storage.create_ticket('Open', title, description, @type,
-                            @priority, session[:user_id], final_project_id, 0)
+                            @priority, session[:user_id], @project_id, 0)
     session[:success] = "You have successfully submitted a new ticket."
     redirect "/tickets"
   end

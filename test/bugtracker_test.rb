@@ -1,9 +1,11 @@
+# require "simplecov"
+# SimpleCov.start
+
 ENV["RACK_ENV"] = "test"
 
 require "minitest/autorun"
 require "minitest/reporters"
 require "rack/test"
-# require "pg"
 
 MiniTest::Reporters.use!
 
@@ -42,6 +44,8 @@ class BugtrackerTest < Minitest::Test
     last_request.env["rack.session"]
   end
 
+  # ----- HELPER METHODS ----- #
+
   def create_dummy_projects
     # project 1
     @test_db.create_project('bugtracker', 'WebApp built on PSQL to submit/track bug reports during software development')
@@ -67,6 +71,14 @@ class BugtrackerTest < Minitest::Test
       'Draw up a rough draft for finance manager app roadmap',
       'Other', 'Low', 4, 2, 3)
   end
+
+  def create_dummy_ticket_comments(ticket_id)
+    comment = "This message is for testing purposes only."
+    commenter_id = 4
+    @test_db.create_comment(comment, commenter_id, ticket_id)
+  end
+
+  # ----- END OF HELPER METHODS ----- #
 
   def test_welcome_message_and_role
     get "/dashboard"
@@ -106,7 +118,7 @@ class BugtrackerTest < Minitest::Test
 
     assert_equal 200, last_response.status
     assert_equal "text/html;charset=utf-8", last_response["Content-Type"]
-    assert_includes last_response.body, %q(href="/tickets/new")
+    assert_includes last_response.body, %q(href="/tickets/new/")
     assert_includes last_response.body, "Edit/Assign"
     assert_includes last_response.body, "Details"
     assert_includes last_response.body, "Title"
@@ -125,11 +137,11 @@ class BugtrackerTest < Minitest::Test
   end
 
   def test_get_tickets_new
-    get "/tickets/new"
+    get "/tickets/new/"
 
     assert_equal 200, last_response.status
     assert_equal "text/html;charset=utf-8", last_response["Content-Type"]
-    assert_includes last_response.body, "Project"
+    assert_includes last_response.body, %q(<select name="project_id")
     assert_includes last_response.body, "Ticket Priority"
     assert_includes last_response.body, "Ticket Type"
     assert_includes last_response.body, "Title"
@@ -140,7 +152,7 @@ class BugtrackerTest < Minitest::Test
   end
 
   def test_post_tickets_new
-    post "/tickets", {title: 'testing new ticket', 
+    post "/tickets/new/", {title: 'testing new ticket', 
       description: 'testing post tickets route', 
       type: 'Others', priority: 'Low', project_id: 1}
 
@@ -155,7 +167,7 @@ class BugtrackerTest < Minitest::Test
   end
 
   def test_post_tickets_new_with_invalid_title
-    post "/tickets", {title: '     ', 
+    post "/tickets/new/", {title: '     ', 
       description: 'testing post tickets route', 
       type: 'Other', priority: 'High', project_id: 2}
 
@@ -168,7 +180,7 @@ class BugtrackerTest < Minitest::Test
   end
 
   def test_post_tickets_new_with_invalid_description
-    post "/tickets", {title: 'test_title', 
+    post "/tickets/new/", {title: 'test_title', 
       description: '     ', 
       type: 'Other', priority: 'High', project_id: 2}
 
@@ -185,14 +197,14 @@ class BugtrackerTest < Minitest::Test
     get "/tickets/new/1"
 
     assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(<dd>"bugtracker")
+    assert_includes last_response.body, %q(<h3>"bugtracker")
     assert_includes last_response.body, %q(<input type="hidden" name="project_id" value="1")
     assert_includes last_response.body, %q(<button type="submit")
 
     get "/tickets/new/2"
 
     assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(<dd>"finance manager")
+    assert_includes last_response.body, %q(<h3>"finance manager")
     assert_includes last_response.body, %q(<input type="hidden" name="project_id" value="2")
     assert_includes last_response.body, "Back to Tickets List"
     assert_includes last_response.body, %q(<button type="submit")
@@ -309,5 +321,62 @@ class BugtrackerTest < Minitest::Test
     assert_equal 200, last_response.status
     refute_includes last_response.body, "Unable to login"
     refute_includes last_response.body, "Create a login functionality with 4 demo logins"
+  end
+
+  # see ticket details
+  def test_get_ticket_id
+    # ticket 2 ('Resolved', 'Object model to handle database',
+      # 'Create an DatabasePersistence.rb file for all database handling',
+      # 'Feature Request', 'High', 4, 1, 3)
+
+    create_dummy_ticket_comments(2)
+
+    get "/tickets/2"
+
+    assert_equal 200, last_response.status
+
+    # Checking for ticket details
+    assert_includes last_response.body, "Details for Ticket #2"
+    assert_includes last_response.body, "Object model to handle database"
+    assert_includes last_response.body, "ASSIGNED DEVELOPER"
+    assert_includes last_response.body, "DEMO_Developer"
+    assert_includes last_response.body, "UPDATED ON"
+
+    # Checking for comment section
+    assert_includes last_response.body, "Leave your comments here."
+    assert_includes last_response.body, %q(<button type="submit">Add Comment)
+    assert_includes last_response.body, "This message is for testing purposes only."
+  end
+
+  # post a ticket comment
+  def test_post_ticket_id_comment
+    post "/tickets/2/comment", {comment: "This is a test. Do not be alarmed."}
+
+    assert_equal 302, last_response.status
+    get last_response["Location"]
+    assert_includes last_response.body, "This is a test. Do not be alarmed."
+    assert_includes last_response.body, "DEMO_QualityAssurance"
+  end
+
+  # post a ticket comment with invalid entry
+  def test_post_ticket_id_comment_invalid
+    post "/tickets/2/comment", {comment: "      "}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Comment must be between 1 and 300 characters."
+    assert_includes last_response.body, "      "
+  end
+
+  # delete a ticket comment
+  def test_post_ticket_id_comment_commentId_destroy
+    create_dummy_ticket_comments(2)
+
+    post "/tickets/2/comment/1/destroy"
+
+    assert_equal 302, last_response.status
+    assert_equal "The ticket comment has been deleted.", session[:success]
+
+    get last_response["Location"]
+    assert_includes last_response.body, "Details for Ticket #2"
   end
 end

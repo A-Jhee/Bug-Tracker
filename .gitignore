@@ -2,3 +2,4 @@
 #    to set local development ENV variables
 .env
 scratchpaper.rb
+/coverage

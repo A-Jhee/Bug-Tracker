@@ -8,6 +8,9 @@
       Project
       <% if @project_name %>
         <h3>"<%= @project_name %>"</h3>
+        <fieldset>
+          <input type="hidden" name="project_id" value="<%= @splat_id %>" />
+        </fieldset>
       <% else %>
         <select name="project_id" required>
           <% if @project_id %>

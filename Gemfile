@@ -13,6 +13,7 @@ gem "securerandom"
 gem "rack-test"
 gem "minitest"
 gem "minitest-reporters"
+gem 'simplecov', require: false, group: :test
 
 # group :production do
 #   gem "puma"
