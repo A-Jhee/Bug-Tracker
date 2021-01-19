@@ -4,6 +4,7 @@ require "sinatra/content_for"
 require "tilt/erubis"
 require "time"
 require "securerandom"
+require "aws-sdk-s3"
 
 require_relative "database_persistence"
 
@@ -11,6 +12,7 @@ configure do
   enable :sessions
   set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(64) }
   set :erb, :escape_html => true
+  set :bucket, ENV["AWS_BUCKET"]
 end
 
 configure(:development) do
@@ -40,6 +42,40 @@ helpers do
     else
       return nil
     end
+  end
+
+  def get_pre_updates_hash(new_info_hash, current_info_hash)
+    removal_keys = DatabasePersistence::UNUSED_PROPERTIES_FOR_UPDATE_HISTORY
+    result = current_info_hash.reject { |k, v| new_info_hash[k] == v }
+    removal_keys.each { |k| result.delete(k) }
+    result
+  end
+
+  def get_update_history_arr(pre_updates, updates, user_id, ticket_id)
+    pre_updates.map do |k, v|
+      [ k, v, updates[k], user_id, ticket_id ]
+    end
+  end
+
+  def get_histories(ticket_id)
+    result = @storage.get_ticket_histories(ticket_id).map do |ticket_history|
+      collector = {}
+      ticket_history.each { |k, v| collector[k] = v }
+      collector
+    end
+
+    result.each do |history|
+      if history["property"] == "developer_id"
+        history["previous_value"] = @storage.get_user_name(history["previous_value"])
+        history["current_value"] = @storage.get_user_name(history["current_value"])
+      end
+    end
+    
+    result
+  end
+
+  def prettify_property_name(property_name)
+    DatabasePersistence::PROPERTY_NAME_CONVERSION[property_name]
   end
 
   def error_for_ticket_title(title)
@@ -153,8 +189,10 @@ end
 # includes: ticket properties, comments, attachments, update history.
 get "/tickets/:id" do
   ticket_id = params[:id]
-  @comments = @storage.get_comments(ticket_id)
   @ticket = @storage.get_ticket_info(ticket_id)
+  @comments = @storage.get_comments(ticket_id)
+  @histories = get_histories(ticket_id)
+  @attached_files = @storage.get_ticket_attachments(ticket_id)
 
   @developer_name = @storage.get_user_name(@ticket["developer_id"])
   @submitter_name = @storage.get_user_name(@ticket["submitter_id"])
@@ -167,8 +205,9 @@ end
 post "/tickets/:id/comment" do
   comment = params[:comment].strip
   ticket_id = params[:id]
-  @comments = @storage.get_comments(ticket_id)
   @ticket = @storage.get_ticket_info(ticket_id)
+  @comments = @storage.get_comments(ticket_id)
+  @histories = get_histories(ticket_id)
 
   @developer_name = @storage.get_user_name(@ticket["developer_id"])
   @submitter_name = @storage.get_user_name(@ticket["submitter_id"])
@@ -208,17 +247,37 @@ get "/tickets/:id/edit" do
   erb :edit_ticket, layout: :layout
 end
 
-# Delete a ticket
-post "/tickets/:id/destroy" do
-  id = params[:id]
+# Download attachment
+get "/tickets/:id/:filename" do
+  object_key = params[:filename]
+  local_path = "./data/downloads/#{object_key}"
+  region = "us-west-2"
+  s3_client = Aws::S3::Client.new(region: region)
 
-  @storage.delete_ticket(id)
-  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
-    session[:success] = "The ticket has been deleted."
-    "/tickets"
-  else  # retain for testing purpose
-    session[:success] = "The ticket has been deleted."
-    redirect "/tickets"
+  s3_client.get_object(
+    response_target: local_path,
+    bucket: settings.bucket,
+    key: object_key
+  )
+
+  redirect "/tickets/#{params[:id]}"
+end
+
+# Upload a file as attachment to a ticket
+post "/upload/:id" do
+  if params[:file] && (tmpfile = params[:file][:tempfile]) && (object_key = params[:file][:filename])
+    region = "us-west-2"
+    s3_client = Aws::S3::Client.new(region: region)
+    s3_client.put_object(
+      bucket: settings.bucket,
+      key: object_key,
+      body: File.read(tmpfile)
+    )
+
+    @storage.create_attachment(object_key, session[:user_id], params[:notes], params[:id])
+
+    session[:success] = "Object '#{object_key}' was uploaded successfully."
+    redirect "/tickets/#{params[:id]}"
   end
 end
 
@@ -256,12 +315,32 @@ post "/tickets/:id" do
     updates = get_updates_hash(new_ticket_info, current_ticket_info)
 
     if updates
+      # Making the updates to the "tickets" table
       @storage.update_ticket(updates, params[:id])
       session[:success] = "You have successfully made changes to a ticket."
-      redirect "/tickets"
+
+      # Making note of the update history in the "ticket_update_history" table
+      pre_updates = get_pre_updates_hash(new_ticket_info, current_ticket_info)
+      update_history_arr = get_update_history_arr(pre_updates, updates, session[:user_id], params[:id])
+      @storage.create_ticket_history(update_history_arr)
+      redirect "/tickets/#{params[:id]}"
     else
       session[:error] = "You did not make any changes. Make any changes to this ticket, or you can return back to Tickets list."
       redirect "/tickets/#{params[:id]}/edit"
     end
+  end
+end
+
+# Delete a ticket
+post "/tickets/:id/destroy" do
+  id = params[:id]
+
+  @storage.delete_ticket(id)
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    session[:success] = "The ticket has been deleted."
+    "/tickets"
+  else  # retain for testing purpose
+    session[:success] = "The ticket has been deleted."
+    redirect "/tickets"
   end
 end

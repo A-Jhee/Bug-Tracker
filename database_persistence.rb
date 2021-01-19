@@ -4,6 +4,10 @@ class DatabasePersistence
   TICKET_PRIORITY = ["Low", "High", "Critical"]
   TICKET_STATUS = ["Open", "In Progress", "Resolved", "Add. Info Required"]
   TICKET_TYPE = ["Bug/Error Report", "Feature Request", "Service Request", "Other"]
+  UNUSED_PROPERTIES_FOR_UPDATE_HISTORY = ["submitter_id", "project_id", "created_on", "updated_on"]
+  PROPERTY_NAME_CONVERSION = {"title"=>"Ticket Title", "description"=>"Description", 
+                               "priority"=>"Ticket Priority", "status"=>"Ticket Status", 
+                               "type"=>"Ticket Type", "developer_id"=>"Assigned Developer"}
 
   def initialize(name)
     @db = PG.connect(dbname: name)
@@ -115,6 +119,53 @@ class DatabasePersistence
         ON tc.commenter_id = u.id
         WHERE tc.ticket_id = $1
         ORDER BY created_on DESC;
+    SQL
+    result = query(sql, ticket_id)
+
+    result
+  end
+
+  def create_ticket_history(history_arr)
+    sql = <<~SQL
+      INSERT INTO ticket_update_history 
+               (property, previous_value, current_value, user_id, ticket_id)
+        VALUES ($1, $2, $3, $4, $5);
+    SQL
+    history_arr.each { |history| query(sql, *history) }
+  end
+
+  def get_ticket_histories(ticket_id)
+    sql = <<~SQL
+      SELECT property, previous_value, current_value, updated_on
+        FROM ticket_update_history
+        WHERE ticket_id = $1
+        ORDER BY updated_on DESC;
+    SQL
+    result = query(sql, ticket_id)
+
+    result
+  end
+
+  def create_attachment(object_key, uploader_id, notes, ticket_id)
+    sql = <<~SQL
+      INSERT INTO ticket_attachments (filename, uploader_id, notes, ticket_id)
+        VALUES ($1, $2, $3, $4);
+    SQL
+    query(sql, object_key, uploader_id, notes, ticket_id)
+  end
+
+  def get_ticket_attachments(ticket_id)
+    sql = <<~SQL
+      SELECT ta.id AS id,
+             ta.filename AS filename,
+             u.name AS uploader_name,
+             ta.notes AS notes,
+             ta.uploaded_on AS uploaded_on
+        FROM ticket_attachments AS ta
+        LEFT JOIN users AS u
+        ON ta.uploader_id = u.id
+        WHERE ta.ticket_id = $1
+        ORDER BY uploaded_on ASC;
     SQL
     result = query(sql, ticket_id)
 

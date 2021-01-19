@@ -307,6 +307,29 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, "     "
   end
 
+  def test_update_ticket_history_within_tickets_edit
+    # old ticket id: 4 = ('Open', 'Finance manager roadmap',
+    #   'Draw up a rough draft for finance manager app roadmap',
+    #   'Other', 'Low', 4, 2, 3)
+
+    post "/tickets/4", {title: "Finance manager roadmap",
+                         description: "Draw up a rough draft for finance manager app roadmap",
+                         priority: "Critical", status: "Add. Info Required", 
+                         type: "Bug/Error Report", developer_id: "5"}
+
+    assert_equal 302, last_response.status
+
+    assert_equal "You have successfully made changes to a ticket.", session[:success]
+
+    get last_response["Location"]
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Details for Ticket #4"
+    assert_includes last_response.body, "Critical"
+    assert_includes last_response.body, "Add. Info Required"
+    assert_includes last_response.body, "TEST_Developer"
+  end
+
   def test_post_delete_ticket
     # ticket 1 ('Open', 'Unable to login',
       # 'Create a login functionality with 4 demo logins',
@@ -349,7 +372,7 @@ class BugtrackerTest < Minitest::Test
   end
 
   # post a ticket comment
-  def test_post_ticket_id_comment
+  def test_post_ticket_id_comment_valid
     post "/tickets/2/comment", {comment: "This is a test. Do not be alarmed."}
 
     assert_equal 302, last_response.status

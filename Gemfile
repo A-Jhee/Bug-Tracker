@@ -13,7 +13,8 @@ gem "securerandom"
 gem "rack-test"
 gem "minitest"
 gem "minitest-reporters"
-gem 'simplecov', require: false, group: :test
+gem "simplecov", require: false, group: :test
+gem "aws-sdk-s3"
 
 # group :production do
 #   gem "puma"

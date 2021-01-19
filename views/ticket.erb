@@ -75,16 +75,48 @@
 
 <br>
 
+<section id="attachments">
+  <h3>Attachments</h3>
+  <form method="post" action="/upload/<%= params[:id] %>" enctype="multipart/form-data">
+    <input type="file" name="file" value="" />
+    <br>
+    <label>
+      Add Notes
+      <input type="text" name="notes" value="n/a" />
+    </label>
+    <br>
+    <button type="submit">Add Attachment</button>
+  </form>
+
+  <br>
+
+  <table class="reg_table">
+    <tr>
+      <th>File</th>
+      <th>Added By</th>
+      <th>Notes</th>
+      <th>Uploaded On</th>
+    </tr>
+
+    <% @attached_files.each do |file| %>
+      <tr>
+        <td>
+          <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>"><%= file["filename"] %></a>
+        </td>
+        <td><%= file["uploader_name"] %></td>
+        <td><%= file["notes"] %></td>
+        <td><%= parse_timestamp(file["uploaded_on"]) %></td>
+      </tr>
+    <% end %>
+  </table>
+</section>
+
+<br>
+
 <section id="comments">
+  <h3>Comments</h3>
   <form action="/tickets/<%= params[:id] %>/comment" method="post">
-    <dl>
-      <dt>
-        <label for="comment">Comments</label>
-      </dt>
-      <dd>
-        <input name="comment" placeholder="Leave your comments here." type="text" value="<%= params[:comment] || "" %>" size="60" />
-      </dd>
-    </dl>
+    <input name="comment" placeholder="Leave your comments here." type="text" value="<%= params[:comment] || "" %>" size="60" />
     <button type="submit">Add Comment</button>
   </form>
 
@@ -113,5 +145,30 @@
     
   </table>
 </section>
+
+<br>
+
+<section id="history">
+  <h3>Ticket Update History</h3>
+  <table class="reg_table">
+    <tr>
+      <th>Property</th>
+      <th>Previous Value</th>
+      <th>Current Value</th>
+      <th>Updated On</th>
+    </tr>
+
+    <% @histories.each do |history| %>
+      <tr>
+        <td><%= prettify_property_name(history["property"]) %></td>
+        <td><%= history["previous_value"] %></td>
+        <td><%= history["current_value"] %></td>
+        <td><%= parse_timestamp(history["updated_on"]) %></td>
+      </tr>
+    <% end %>
+  </table>
+</section>
+
+<br>
 
 <a href="/tickets">Back to Tickets List</a>
