@@ -1,6 +1,15 @@
-<section id="details">
-  <h3>Details for Ticket #<%= params[:id] %></h3>
+<section class="details">
+  <h3>Ticket Details</h3>
+  <a href="/tickets/<%= params[:id] %>/edit">Edit Ticket</a>
+  <br>
   <dl class="properties">
+    <dt>
+      TICKET ID
+    </dt>
+    <dd>
+      #<%= params[:id] %>
+    </dd>
+
     <dt>
       TICKET TITLE
     </dt>
@@ -75,7 +84,7 @@
 
 <br>
 
-<section id="attachments">
+<section class="attachments">
   <h3>Attachments</h3>
   <form method="post" action="/upload/<%= params[:id] %>" enctype="multipart/form-data">
     <input type="file" name="file" value="" />
@@ -98,10 +107,10 @@
       <th>Uploaded On</th>
     </tr>
 
-    <% @attached_files.each do |file| %>
+    <% @attachments.each do |file| %>
       <tr>
         <td>
-          <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>"><%= file["filename"] %></a>
+          <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>" target="_blank"><%= file["filename"] %></a>
         </td>
         <td><%= file["uploader_name"] %></td>
         <td><%= file["notes"] %></td>
@@ -113,7 +122,7 @@
 
 <br>
 
-<section id="comments">
+<section class="comments">
   <h3>Comments</h3>
   <form action="/tickets/<%= params[:id] %>/comment" method="post">
     <input name="comment" placeholder="Leave your comments here." type="text" value="<%= params[:comment] || "" %>" size="60" />
@@ -148,7 +157,7 @@
 
 <br>
 
-<section id="history">
+<section class="history">
   <h3>Ticket Update History</h3>
   <table class="reg_table">
     <tr>
@@ -156,6 +165,7 @@
       <th>Previous Value</th>
       <th>Current Value</th>
       <th>Updated On</th>
+      <th>Updated By</th>
     </tr>
 
     <% @histories.each do |history| %>
@@ -164,6 +174,7 @@
         <td><%= history["previous_value"] %></td>
         <td><%= history["current_value"] %></td>
         <td><%= parse_timestamp(history["updated_on"]) %></td>
+        <td><%= history["user_id"] %></td>
       </tr>
     <% end %>
   </table>

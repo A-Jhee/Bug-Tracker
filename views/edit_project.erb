@@ -1,0 +1,17 @@
+<h3>Edit Project</h3>
+
+<form class="enlarge" method="post" action="/projects/<%= params[:id] %>">
+  <fieldset>
+    <label>
+      Project Name
+      <input type="text" name="name" autocompelte="off" value="<%= params[:name] || @project["name"] %>" size="35" maxlength="100" required />
+    </label>
+    <label>
+      Description
+      <input type="text" name="description" autocompelte="off" value="<%= params[:description] || @project["description"] %>" size="60" maxlength="300" required />
+    </label>
+  </fieldset>
+  <br>
+  <a href="/projects/<%= params[:id] %>">Back to The Project</a>
+  <button type="submit">Edit Project</button>
+</form>

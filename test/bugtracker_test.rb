@@ -80,13 +80,13 @@ class BugtrackerTest < Minitest::Test
 
   # ----- END OF HELPER METHODS ----- #
 
-  def test_welcome_message_and_role
-    get "/dashboard"
+  # def test_welcome_message_and_role
+  #   get "/dashboard"
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "DEMO_QualityAssurance"
-    assert_includes last_response.body, "quality_assurance"
-  end
+  #   assert_equal 200, last_response.status
+  #   assert_includes last_response.body, "DEMO_QualityAssurance"
+  #   assert_includes last_response.body, "quality_assurance"
+  # end
 
   def test_dashboard_redirect
     get "/"
@@ -185,7 +185,7 @@ class BugtrackerTest < Minitest::Test
       type: 'Other', priority: 'High', project_id: 2}
 
     assert_equal 200, last_response.status
-    assert_includes last_response.body, "Ticket description must be between 1 and 300 characters."
+    assert_includes last_response.body, "Description must be between 1 and 300 characters."
     assert_includes last_response.body, "High"
     assert_includes last_response.body, "Other"
     assert_includes last_response.body, "finance manager"
@@ -253,7 +253,9 @@ class BugtrackerTest < Minitest::Test
                          developer_id: "3"}
 
     assert_equal 302, last_response.status
-    assert_equal "You did not make any changes. Make any changes to this ticket, or you can return back to Tickets list.", session[:error]
+    assert_equal "You did not make any changes. \
+         Make any changes to this ticket, or you can return back to Tickets list.",
+         session[:error]
 
     get last_response["Location"]
     assert_includes last_response.body, "Finance manager roadmap"
@@ -303,7 +305,7 @@ class BugtrackerTest < Minitest::Test
 
     assert_equal 200, last_response.status
     assert_includes last_response.body, "Make changes to ticket properties"
-    assert_includes last_response.body, "Ticket description must be between 1 and 300 characters."
+    assert_includes last_response.body, "Description must be between 1 and 300 characters."
     assert_includes last_response.body, "     "
   end
 
@@ -324,7 +326,7 @@ class BugtrackerTest < Minitest::Test
     get last_response["Location"]
 
     assert_equal 200, last_response.status
-    assert_includes last_response.body, "Details for Ticket #4"
+    assert_includes last_response.body, "Ticket Details"
     assert_includes last_response.body, "Critical"
     assert_includes last_response.body, "Add. Info Required"
     assert_includes last_response.body, "TEST_Developer"
@@ -359,7 +361,7 @@ class BugtrackerTest < Minitest::Test
     assert_equal 200, last_response.status
 
     # Checking for ticket details
-    assert_includes last_response.body, "Details for Ticket #2"
+    assert_includes last_response.body, "Ticket Details"
     assert_includes last_response.body, "Object model to handle database"
     assert_includes last_response.body, "ASSIGNED DEVELOPER"
     assert_includes last_response.body, "DEMO_Developer"
@@ -400,6 +402,50 @@ class BugtrackerTest < Minitest::Test
     assert_equal "The ticket comment has been deleted.", session[:success]
 
     get last_response["Location"]
-    assert_includes last_response.body, "Details for Ticket #2"
+    assert_includes last_response.body, "Ticket Details"
+  end
+
+  # render new project form
+  def test_get_projects_new
+    get "/projects/new"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Create Project"
+    assert_includes last_response.body, "Project Name"
+    assert_includes last_response.body, "Description"
+    assert_includes last_response.body, %q(<button type="submit">Create Project)
+  end
+
+  # post a new project with invalid entries: bad name, bad description, not unique name
+  def test_post_projects_new_invalid
+    post "/projects/new", {name: "    ", description: ""}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Project name must be between 1 and 100 characters."
+    assert_includes last_response.body, "    "
+
+    post "/projects/new", {name: "test project", description: "     "}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Description must be between 1 and 300 characters."
+    assert_includes last_response.body, "     "
+
+    post "/projects/new", {name: "bugtracker", description: "valid description"}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "That project name is already in use. A project name must be unique."
+    assert_includes last_response.body, "bugtracker"
+  end
+
+  # post a new project with valid entries
+  def test_post_projects_new_valid
+    post "/projects/new", {name: "test project", description: "valid description"}
+
+    assert_equal 302, last_response.status
+    assert_equal "You have successfully submitted a new project.", session[:success]
+
+    get last_response["Location"]
+    assert_includes last_response.body, "test project"
+    assert_includes last_response.body, "valid description"
   end
 end

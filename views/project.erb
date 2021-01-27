@@ -1,0 +1,68 @@
+<section class="details">
+  <p>Project Name</p>
+  <h3><%= @project["name"] %></h3>
+  <br>
+  <p>Description</p>
+  <h3><%= @project["description"] %></h3>
+  <a href="/projects/<%= @project_id %>/edit">Edit Project</a>
+</section>
+<br>
+<section class="assigned_users">
+  <h3>Assigned Users</h3>
+  <table class="reg_table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>E-mail</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @assigned_users.each do |user| %>
+        <tr>
+          <td><%= user["name"] %></td>
+          <td><%= user["role"] %></td>
+          <td><%= user["email"] %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+<br>
+<section class="tickets">
+  <h3>Tickets For This Project</h3>
+  <table class="reg_table">
+    <thead>
+      <tr>
+        <th>Ticket ID</th>
+        <th>Title</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Type</th>
+        <th>Assigned to</th>
+        <th>Submitted by</th>
+        <th>Created on</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @tickets.each do |ticket| %>
+        <tr>
+          <td><%= ticket["id"] %></td>
+          <td><%= ticket["title"] %></td>
+          <td><%= ticket["priority"] %></td>
+          <td><%= ticket["status"] %></td>
+          <td><%= ticket["type"] %></td>
+          <td><%= ticket["developer_name"] %></td>
+          <td><%= ticket["submitter_name"] %></td>
+          <td><%= ticket["created_on"] %></td>
+          <td>
+            <a href="/tickets/<%= ticket["id"] %>">View Ticket</a>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+<br>
+<a href="/projects">Back to Projects List</a>

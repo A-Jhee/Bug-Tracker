@@ -1,4 +1,4 @@
-<h4 class="make_bold">My Projects</h4>
+<a class="make_bold" href="/projects/new">CREATE A PROJECT</a>
 
 <table class="reg_table">
   <thead>
@@ -16,10 +16,13 @@
         <td>
           <ul>
             <li>
-              <a href="/tickets/new/<%= project["id"] %>">Create A Ticket</a>
+              <a href="/projects/<%= project["id"] %>">Details</a>
             </li>
             <li>
-              <a href="/projects/<%= project["id"] %>">Details</a>
+              <a href="/projects/users/<%= project["id"] %>">Manage Users</a>
+            </li>
+            <li>
+              <a href="/tickets/new/<%= project["id"] %>">Create A Ticket</a>
             </li>
           </ul>
         </td>
