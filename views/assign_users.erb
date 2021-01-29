@@ -1,0 +1,52 @@
+<p>Project Name</p>
+<h3><%= @project["name"] %></h3>
+<br>
+<p>Description</p>
+<h3><%= @project["description"] %></h3>
+<br>
+<p>Select users you wish to assign to this project</p>
+<br>
+<p>Unselecting a selected user will unassign that user from this project</p>
+<br>
+<form id="assign_users" method="post" action="/projects/<%= params[:id] %>/users">
+  <fieldset>
+    <button type="submit" class="enlarge">Assign</button>
+  </fieldset>
+  <fieldset>
+    <table class="reg_table">
+      <thead>
+        <tr>
+          <th>
+            <input type="checkbox" id="select-all" />
+          </th>
+          <th>User</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @users.each do |user| %>
+          <% next if user["id"] == "0" %>
+          <tr>
+            <% if user["assigned?"] %>
+              <td>
+                <input type="checkbox" name="assigned_users[]" form="assign_users"
+                value="<%= user["id"] + ID_ROLE_DELIMITER + user["role"] %>" checked />
+              </td>
+            <% else %>
+              <td>
+                <input type="checkbox" name="assigned_users[]" form="assign_users"
+                value="<%= user["id"] + ID_ROLE_DELIMITER + user["role"] %>" />
+              </td>
+            <% end %>
+            <td>
+              <dt><%= user["name"] %></dt>
+              <dd><%= user["email"] %></dd>
+            </td>
+            <td><%= prettify_user_role(user["role"]) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </fieldset>
+  <a href="/projects/<%= params[:id] %>">Back to The Project</a>
+</form>

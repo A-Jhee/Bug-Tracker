@@ -8,6 +8,8 @@ require "aws-sdk-s3"
 
 require_relative "database_persistence"
 
+ID_ROLE_DELIMITER = "!"
+
 configure do
   enable :sessions
   set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(64) }
@@ -55,6 +57,10 @@ helpers do
     DatabasePersistence::TICKET_PROPERTY_NAME_CONVERSION[property_name]
   end
 
+  def prettify_user_role(user_role)
+    DatabasePersistence::USER_ROLE_CONVERSION[user_role]
+  end
+
   def ticket_priorities
     DatabasePersistence::TICKET_PRIORITY
   end
@@ -75,29 +81,34 @@ helpers do
     DatabasePersistence::TICKET_PROPERTY_NAME_CONVERSION
   end
 
-  # What: Returns a hash containing tickets for a project with user ids
-  #       swapped for user names
+  # What: Returns an array that contains a hash for each row of data returned
+  #       by psql database for users assigned to the project.
+  #       ex) [{"id"=>"1", "role"=>"admin"}, {"id"=>"3", "role"=>"developer"}]
+  def current_assigned_users(project_id)
+    @storage.all_users_on_project(project_id).map { |user| user }
+  end
+
+  # What: Returns an array of user ids. It accepts the returning object from
+  #       the method above: #current_assigned_users.
+  # Why:  During user assignments/unassignments, just the user id's are compared
+  #       to determine which action to take.
+  def user_id_array(user_id_role_arr)
+    user_id_role_arr.map { |user| user["id"] }
+  end
+
+  # What: Returns a hash containing tickets for a project with two new key:value
+  #       pairs that contain developer and submitter names
   # Why:  To make it more readable for the app user, the developer_ids and 
-  #       submitter_ids found within ticket info are swapped for corresponding 
-  #       user names. Because "@storage.tickets_for_project(project_id)" 
-  #       returns a PG::Result object that does not allow value substitution
-  #       of the key:value pairs that represents column_name:column_value pairs, each
-  #       column_name:column_value pairs are re-initialized into a new hash "collector"
-  #       and collect those within an array and return that array of hashes.
+  #       submitter_ids found within ticket info used to retrieve corresponding
+  #       user names.
   def tickets_for_project_with_usernames(project_id)
-    @storage.tickets_for_project(project_id).map do |ticket|
-      collector = {}
-      ticket.each do |k, v|
-        if k == "developer_id"
-          collector["developer_name"] = @storage.get_user_name(v)
-        elsif k == "submitter_id"
-          collector["submitter_name"] = @storage.get_user_name(v)
-        else
-          collector[k] = v
-        end
-      end
-      collector
+    result = []
+    @storage.tickets_for_project(project_id).each do |ticket|
+      ticket["developer_name"] = @storage.get_user_name(ticket["developer_id"])
+      ticket["submitter_name"] = @storage.get_user_name(ticket["submitter_id"])
+      result << ticket
     end
+    result
   end
 
   # What: returns PG::Result objects that contain the 4 major categories
@@ -159,30 +170,14 @@ helpers do
   # What: Returns a hash containing all ticket history for a ticket with
   #       developer id and updater id swapped for their names.
   def get_histories(ticket_id)
-    # "@storage.get_ticket_histories(ticket_id)" in the line below contains
-    # all rows in ticket_update_history table in the database for the given ticket_id.
-    # ticket_history represents each row of data, and it is mapped to
-    # a new hash: collector.
-    #
-    # Why:  In the next result.each block I want to swap "developer_id" and "user_id"
-    #       values for their names. I cannot reassign values restored within PG::Result
-    #       unless I re-initialize them in a regular hash first.
-    result = @storage.get_ticket_histories(ticket_id).map do |ticket_history|
-      collector = {}
-      ticket_history.each { |k, v| collector[k] = v }
-      collector
-    end
-
-    # This is for the view to display user names rather than user id for readability.
-    result.each do |history|
+    @storage.get_ticket_histories(ticket_id).map do |history|
       if history["property"] == "developer_id"
         history["previous_value"] = @storage.get_user_name(history["previous_value"])
         history["current_value"] = @storage.get_user_name(history["current_value"])
       end
       history["user_id"] = @storage.get_user_name(history["user_id"])
+      history
     end
-    
-    result
   end
 
   # What: Uploads the file content to S3 with the specified object_key.
@@ -246,6 +241,11 @@ get "/dashboard" do
 end
 
 # -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
 
 # VIEW ALL USER'S ASSIGNED PROJECTS
 get "/projects" do
@@ -278,6 +278,65 @@ post "/projects/new" do
 
     session[:success] = "You have successfully submitted a new project."
     redirect "/projects"
+  end
+end
+
+# VIEW ASSIGN USER TO PROJECT FORM
+get "/projects/:id/users" do
+  @project = @storage.get_project(params[:id])
+
+  assigned_users = current_assigned_users(params[:id])
+  assigned_user_ids = user_id_array(assigned_users)
+  
+  @users = @storage.all_users.map do |user|
+    if assigned_user_ids.include?(user["id"])
+      user["assigned?"] = true
+    end
+    user
+  end
+
+  erb :assign_users, layout: :layout
+end
+
+# POST USER ASSIGNMENTS
+post "/projects/:id/users" do
+  project_id = params[:id]
+
+  if params[:assigned_users].nil?
+    @storage.unassign_all_users_from_project(project_id)
+
+    session[:success] = "There are no users assigned to this project."
+    redirect "/projects/#{project_id}"
+  else
+    new_assigned_users = params[:assigned_users].map do |user|
+      id, role = user.split(ID_ROLE_DELIMITER)
+      {"id" => id, "role" => role}
+    end
+    new_assigned_users_ids = user_id_array(new_assigned_users)
+
+    assigned_users = current_assigned_users(project_id)
+    assigned_user_ids = user_id_array(assigned_users)
+
+    new_assignments = new_assigned_users.reject do |user|
+      assigned_user_ids.include?(user["id"])
+    end
+
+    # Assign new users to project
+    new_assignments.each do |new_user|
+      @storage.assign_user_to_project(project_id, new_user["id"], new_user["role"])
+    end
+
+    unassignments = assigned_user_ids.reject do |user_id|
+      new_assigned_users_ids.include?(user_id)
+    end
+
+    # Unassign users from project
+    unassignments.each do |user_id|
+      @storage.unassign_user_from_project(project_id, user_id)
+    end
+
+    session[:success] = "You have successfully made new user assignments."
+    redirect "/projects/#{project_id}"
   end
 end
 
@@ -317,6 +376,11 @@ post "/projects/:id" do
   end
 end
 
+# -------------TICKETS-------------------------------------------------------- #
+# -------------TICKETS-------------------------------------------------------- #
+# -------------TICKETS-------------------------------------------------------- #
+# -------------TICKETS-------------------------------------------------------- #
+# -------------TICKETS-------------------------------------------------------- #
 # -------------TICKETS-------------------------------------------------------- #
 
 # VIEW ALL TICKETS FOR USER'S ASSIGNED PROJECTS

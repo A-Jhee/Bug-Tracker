@@ -448,4 +448,101 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, "test project"
     assert_includes last_response.body, "valid description"
   end
+
+  # render project edit form
+  def get_project_id_edit
+    get "/projects/1/edit"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Edit Project"
+    assert_includes last_response.body, "bugtracker"
+  end
+
+  # post project edits
+  def post_get_project_id
+    post "/projects/1", {name: "    ", description: ""}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Project name must be between 1 and 100 characters."
+    assert_includes last_response.body, "    "
+
+    post "/projects/1", {name: "test project", description: "     "}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Description must be between 1 and 300 characters."
+    assert_includes last_response.body, "     "
+
+    post "/projects/1", {name: "bugtracker", description: "valid description"}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "That project name is already in use. A project name must be unique."
+    assert_includes last_response.body, "bugtracker"
+
+    post "/projects/1", {name: "pig tracker", description: "app for tracking pigs and piglets"}
+
+    assert_equal 302, last_response.status
+    assert_equal "You have successfully updated the project.", session[:success]
+
+    get last_response["Location"]
+    assert_includes last_response.body, "pig tracker"
+    assert_includes last_response.body, "app for tracking pigs and piglets"
+  end
+
+  # render assign users form
+  def test_get_projects_id_users
+    get "/projects/1/users"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Assign"
+    assert_includes last_response.body, "bugtracker"
+    assert_includes last_response.body, "Select users you wish to assign to this project"
+    assert_includes last_response.body, "DEMO_Admin"
+    assert_includes last_response.body, %q(<input type="checkbox")
+    refute_includes last_response.body, "Unassigned"
+  end
+
+  # post new user assignments to a project
+  def test_post_projects_id_users
+    ["1", "2", "3"].each { |ticket_id| @test_db.delete_ticket(ticket_id) }
+
+    post "/projects/1/users",
+      {assigned_users: ["2!DEMO_ProjectManager", "3!DEMO_Developer", "5!TEST_Developer"]}
+
+    assert_equal 302, last_response.status
+    assert_equal "You have successfully made new user assignments.", session[:success]
+
+    get last_response["Location"]
+    assert_includes last_response.body, "Edit Project"
+    assert_includes last_response.body, "DEMO_ProjectManager"
+    assert_includes last_response.body, "DEMO_Developer"
+    assert_includes last_response.body, "TEST_Developer"
+
+    refute_includes last_response.body, "DEMO_Admin"
+    refute_includes last_response.body, "DEMO_QualityAssurance"
+
+    post "/projects/1/users",
+      {assigned_users: ["1!DEMO_Admin", "3!DEMO_Developer", "4!DEMO_QualityAssurance"]}
+
+    assert_equal 302, last_response.status
+
+    get last_response["Location"]
+    assert_includes last_response.body, "Edit Project"
+    assert_includes last_response.body, "DEMO_Admin"
+    assert_includes last_response.body, "DEMO_Developer"
+    assert_includes last_response.body, "DEMO_QualityAssurance"
+
+    refute_includes last_response.body, "TEST_Developer"
+
+    post "/projects/1/users"
+
+    assert_equal 302, last_response.status
+    assert_equal "There are no users assigned to this project.", session[:success]
+
+    get last_response["Location"]
+
+    assert_includes last_response.body, "Edit Project"
+    refute_includes last_response.body, "DEMO_Admin"
+    refute_includes last_response.body, "TEST_Developer"
+    refute_includes last_response.body, "DEMO_Developer"
+  end
 end

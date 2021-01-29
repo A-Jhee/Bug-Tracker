@@ -168,15 +168,10 @@ CREATE TABLE ticket_attachments (
 
 -- STATEMENT CRAFTING TABLE ------------------------------------------------------------
 
--- ALTER TABLE ticket_attachments
---   ADD COLUMN ticket_id int NOT NULL REFERENCES tickets (id) ON DELETE CASCADE;
-
--- INSERT INTO projects_users_assignments 
---   (project_id, user_id, role)
---   VALUES (1, 2, 'project_manager'),
---         (6, 3, 'developer'),
---         (6, 5, 'developer'),
---         (6, 4, 'quality_assurance');
+    SELECT u.id, u.role
+      FROM projects_users_assignments AS pua
+ LEFT JOIN users AS u ON pua.user_id = u.id
+     WHERE pua.project_id = 6;
 
 -- PUSH DOWN TO NEAR END OF FILE ------------------------------------------------------------
 

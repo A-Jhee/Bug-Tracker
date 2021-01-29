@@ -22,6 +22,15 @@ class DatabasePersistence
       "developer_id" => "Assigned Developer"
     }
 
+  USER_ROLE_CONVERSION = 
+    {
+      "admin" => "Admin",
+      "project_manager" => "Project Manager",
+      "developer" => "Developer",
+      "quality_assurance" => "Quality Assurance",
+      "Unassigned" => "Unassigned"
+    }
+
   # What: Create a PG connection object and stores it as instance var.
   # Why:  Use it to make all psql interactions.
   def initialize(psql_database_name)
@@ -41,6 +50,11 @@ class DatabasePersistence
   end
 
   # -------------USERS--------------------------------------------------------- #
+  # -------------USERS--------------------------------------------------------- #
+  # -------------USERS--------------------------------------------------------- #
+  # -------------USERS--------------------------------------------------------- #
+  # -------------USERS--------------------------------------------------------- #
+  # -------------USERS--------------------------------------------------------- #
 
   # What: Returns a username as string.
   # Why:  Makes it intuitive to retrieve username from user ID.
@@ -55,7 +69,24 @@ class DatabasePersistence
 
   def all_developers
     sql = "SELECT * FROM users WHERE role='developer';"
+    query(sql)
+  end
 
+  # What: Returns PG::Result object of all user ids assigned to a project
+  # Why:  Use this in conjunction with info on all users to display users
+  #       who are already assigned to the project
+  def all_users_on_project(project_id)
+    sql = <<~SQL
+        SELECT u.id, u.role
+          FROM projects_users_assignments AS pua
+     LEFT JOIN users AS u ON pua.user_id = u.id
+         WHERE pua.project_id = $1;
+    SQL
+    query(sql, project_id)
+  end
+
+  def all_users
+    sql = "SELECT * FROM users ORDER BY UPPER(name) ASC;"
     query(sql)
   end
 
@@ -67,6 +98,22 @@ class DatabasePersistence
     query(sql, project_id, user_id, role)
   end
 
+  def unassign_user_from_project(project_id, user_id)
+    sql = <<~SQL
+      DELETE FROM projects_users_assignments 
+            WHERE project_id = $1 AND user_id = $2;
+    SQL
+    query(sql, project_id, user_id)
+  end
+
+  def unassign_all_users_from_project(project_id)
+    sql = <<~SQL
+      DELETE FROM projects_users_assignments 
+            WHERE project_id = $1;
+    SQL
+    query(sql, project_id)
+  end
+
   def get_assigned_users(project_id)
     sql = <<~SQL
       SELECT users.name,
@@ -75,11 +122,17 @@ class DatabasePersistence
         FROM users
   RIGHT JOIN projects_users_assignments AS pua
           ON users.id = pua.user_id
-       WHERE pua.project_id = $1;
+       WHERE pua.project_id = $1
+    ORDER BY users.name;
     SQL
     query(sql, project_id)
   end
 
+  # -------------PROJECTS------------------------------------------------------- #
+  # -------------PROJECTS------------------------------------------------------- #
+  # -------------PROJECTS------------------------------------------------------- #
+  # -------------PROJECTS------------------------------------------------------- #
+  # -------------PROJECTS------------------------------------------------------- #
   # -------------PROJECTS------------------------------------------------------- #
 
   def create_project(project_name, project_description)
@@ -89,7 +142,7 @@ class DatabasePersistence
   end
 
   def all_projects
-    sql = "SELECT * FROM projects;"
+    sql = "SELECT * FROM projects ORDER BY UPPER(name) ASC;"
 
     query(sql)
   end
@@ -129,6 +182,11 @@ class DatabasePersistence
     query(sql_2, project_description, project_id)
   end
 
+  # -------------TICKETS-------------------------------------------------------- #
+  # -------------TICKETS-------------------------------------------------------- #
+  # -------------TICKETS-------------------------------------------------------- #
+  # -------------TICKETS-------------------------------------------------------- #
+  # -------------TICKETS-------------------------------------------------------- #
   # -------------TICKETS-------------------------------------------------------- #
 
   def create_ticket(status, title, description, type, priority, submitter_id, project_id, developer_id)
