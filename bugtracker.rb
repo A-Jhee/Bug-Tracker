@@ -10,6 +10,10 @@ require "bcrypt"
 require_relative "database_persistence"
 
 ID_ROLE_DELIMITER = "!"
+DEMO_LOGINS = [{id: 1, role: "admin", name: "Admin, Demo"},
+              {id: 2, role: "project_manager", name: "Project Manager, Demo"},
+              {id: 3, role: "developer", name: "Developer, Demo"},
+              {id: 4, role: "quality_assurance", name: "Quality Assurance, Demo"}]
 
 configure do
   enable :sessions
@@ -31,6 +35,18 @@ helpers do
 
   def correct_password?(password, hashed_password)
     BCrypt::Password.new(hashed_password) == password
+  end
+
+  def login_for_role(demo_role)
+    session.clear
+    DEMO_LOGINS.each do |login|
+      if login[:role] == demo_role
+        session.clear
+        session[:user_id] = login[:id]
+        session[:user_name] = login[:name]
+        session[:user_role] = prettify_user_role(login[:role])
+      end
+    end
   end
 
   # What: Parses psql's timestamp data type to a more readable format.
@@ -323,6 +339,15 @@ post "/login" do
       "You are now logged in as #{session[:user_role]}, #{session[:user_name]}."
     redirect "/dashboard"
   end
+end
+
+post "/demo_login" do
+  demo_role = params[:demo_login_role]
+  login_for_role(demo_role)
+
+  session[:success] =
+      "You are now logged in as #{session[:user_role]}, #{session[:user_name]}."
+  redirect "/dashboard"
 end
 
 # LOG OUT USER
