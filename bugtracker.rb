@@ -5,6 +5,7 @@ require "tilt/erubis"
 require "time"
 require "securerandom"
 require "aws-sdk-s3"
+require "bcrypt"
 
 require_relative "database_persistence"
 
@@ -24,6 +25,14 @@ configure(:development) do
 end
 
 helpers do
+  def encrypt(password)
+    BCrypt::Password.create(password)
+  end
+
+  def correct_password?(password, hashed_password)
+    BCrypt::Password.new(hashed_password) == password
+  end
+
   # What: Parses psql's timestamp data type to a more readable format.
   #       Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
   def parse_timestamp(sql_timestamp)
@@ -35,10 +44,10 @@ helpers do
     return error_msg unless (1..100).cover? title.size
   end
 
-  def error_for_project_name(name)
-    if !(1..100).cover? name.size
+  def error_for_project_name(project_name)
+    if !(1..100).cover? project_name.size
       "Project name must be between 1 and 100 characters."
-    elsif @storage.all_projects.any? { |project| project["name"] == name }
+    elsif @storage.all_projects.any? { |project| project["name"] == project_name }
       "That project name is already in use. A project name must be unique."
     end
   end
@@ -218,10 +227,10 @@ helpers do
 end
 
 before do
-  session[:user_id] ||= 2
-  session[:user_name] ||= "DEMO_ProjectManager"
-  session[:user_role] ||= "project_manager"
   if ENV["RACK_ENV"] == "test"
+    session[:user_id] = "1"
+    session[:user_name] = "DEMO_Admin"
+    session[:user_role] = "admin"
     @storage = DatabasePersistence.new("bugtrack_test")
   else
     @storage = DatabasePersistence.new("bugtrack")
@@ -238,6 +247,90 @@ end
 
 get "/dashboard" do
   erb :dashboard, layout: :layout
+end
+
+# -------------USERS---------------------------------------------------------- #
+# -------------USERS---------------------------------------------------------- #
+# -------------USERS---------------------------------------------------------- #
+# -------------USERS---------------------------------------------------------- #
+# -------------USERS---------------------------------------------------------- #
+# -------------USERS---------------------------------------------------------- #
+
+# VIEW USER REGISTRATION FORM
+get "/register" do
+  erb :register, layout: :register_layout
+end
+
+# POST NEW USER REGISTRATION
+post "/register" do
+  full_name = "#{params[:first_name]} #{params[:last_name]}"
+  email = params[:email]
+  username = params[:username]
+  password = encrypt(params[:password])
+
+  if @storage.valid_new_user?(username, email)
+    error = nil
+  else
+    error = "That username or email is already in use."
+  end
+
+  if error
+    session[:error] = error
+    erb :register, layout: :register_layout
+  else
+    user_id = @storage.register_new_user(full_name, username, password, email)
+
+    session.clear
+    session[:user_id] = user_id
+    session[:user_name] = full_name
+    session[:user_role] = prettify_user_role("Unassigned")
+
+    session[:success] = "You are now logged in to your new account, #{full_name}."
+    redirect "/dashboard"
+  end
+end
+
+# VIEW LOG IN FORM
+get "/login" do
+  erb :login, layout: :register_layout
+end
+
+# POST USER LOG IN
+post "/login" do
+  username = params[:username]
+  password = params[:password]
+
+  login = @storage.correct_username?(username)
+
+  if login && correct_password?(password, login["password"])
+    error = nil
+  else
+    error = "Username or password was incorrect."
+  end
+
+  if error
+    session[:error] = error
+    erb :login, layout: :register_layout
+  else
+    user = @storage.user(login["user_id"])
+
+    session.clear
+    session[:user_id] = user["id"]
+    session[:user_name] = user["name"]
+    session[:user_role] = prettify_user_role(user["role"])
+
+    session[:success] =
+      "You are now logged in as #{session[:user_role]}, #{session[:user_name]}."
+    redirect "/dashboard"
+  end
+end
+
+# LOG OUT USER
+get "/logout" do
+  session.clear
+
+  session[:success] = "You successfully logged out."
+  redirect "/login"
 end
 
 # -------------PROJECTS------------------------------------------------------- #

@@ -56,6 +56,42 @@ class DatabasePersistence
   # -------------USERS--------------------------------------------------------- #
   # -------------USERS--------------------------------------------------------- #
 
+  def register_new_user(full_name, username, password, email)
+    sql1 = "INSERT INTO users (name, email) VALUES ($1, $2);"
+    query(sql1, full_name, email)
+
+    sql2 = "SELECT id FROM users WHERE name=$1 AND email=$2;"
+    user_id = query(sql2, full_name, email).first["id"]
+
+    sql3 = <<~SQL
+      INSERT INTO user_logins (username, password, user_id)
+           VALUES ($1, $2, $3)
+    SQL
+    query(sql3, username, password, user_id)
+    user_id
+  end
+
+  def valid_new_user?(username, email)
+    sql = <<~SQL
+        SELECT ul.username, u.email
+          FROM user_logins AS ul
+     LEFT JOIN users AS u
+            ON ul.user_id = u.id
+         WHERE ul.username=$1 OR u.email=$2;
+    SQL
+    query(sql, username, email).first.nil?
+  end
+
+  def correct_username?(username)
+    sql = "SELECT * FROM user_logins WHERE username=$1;"
+    query(sql, username).first
+  end
+
+  def user(user_id)
+    sql = "SELECT * FROM users WHERE id=$1;"
+    query(sql, user_id).first
+  end
+
   # What: Returns a username as string.
   # Why:  Makes it intuitive to retrieve username from user ID.
   def get_user_name(user_id)

@@ -22,7 +22,7 @@ class BugtrackerTest < Minitest::Test
   def setup
     @test_db = DatabasePersistence.new("bugtrack_test")
     sql = <<~SQL
-    TRUNCATE projects, 
+    TRUNCATE projects,
              projects_users_assignments,
              tickets,
              ticket_comments,
@@ -31,7 +31,7 @@ class BugtrackerTest < Minitest::Test
              RESTART IDENTITY;
     SQL
     @test_db.query(sql)
-
+    
     create_dummy_projects
     create_dummy_tickets
   end
@@ -45,6 +45,10 @@ class BugtrackerTest < Minitest::Test
   end
 
   # ----- HELPER METHODS ----- #
+
+  def logout
+    session.clear
+  end
 
   def create_dummy_projects
     # project 1
@@ -76,6 +80,15 @@ class BugtrackerTest < Minitest::Test
     comment = "This message is for testing purposes only."
     commenter_id = 4
     @test_db.create_comment(comment, commenter_id, ticket_id)
+  end
+
+  def delete_test_user
+    sql = <<~SQL 
+      DELETE FROM users
+            WHERE name = 'George Washington'
+              AND email = 'gwash@potus.gov';
+    SQL
+    @test_db.query(sql)
   end
 
   # ----- END OF HELPER METHODS ----- #
@@ -498,7 +511,6 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, "Select users you wish to assign to this project"
     assert_includes last_response.body, "DEMO_Admin"
     assert_includes last_response.body, %q(<input type="checkbox")
-    refute_includes last_response.body, "Unassigned"
   end
 
   # post new user assignments to a project
@@ -517,7 +529,6 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, "DEMO_Developer"
     assert_includes last_response.body, "TEST_Developer"
 
-    refute_includes last_response.body, "DEMO_Admin"
     refute_includes last_response.body, "DEMO_QualityAssurance"
 
     post "/projects/1/users",
@@ -541,8 +552,123 @@ class BugtrackerTest < Minitest::Test
     get last_response["Location"]
 
     assert_includes last_response.body, "Edit Project"
-    refute_includes last_response.body, "DEMO_Admin"
+
     refute_includes last_response.body, "TEST_Developer"
     refute_includes last_response.body, "DEMO_Developer"
+  end
+
+  # render register new user form
+  def test_get_register
+    get "/logout"
+
+    get "/register"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "E-mail"
+    assert_includes last_response.body, "Password"
+    assert_includes last_response.body, "Already have an account?"
+    assert_includes last_response.body, "Register"
+    assert_includes last_response.body, %q(<button type="submit")
+  end
+
+  # post an invalid register new user form
+  def test_post_register_invalid
+    get "/logout"
+
+    # bad email: existing email - testdev@demonstration.com
+    post "/register", {first_name: "George", last_name: "Washington",
+                       email: "testdev@demonstration.com", username: "g-wash",
+                       password: "imthefirst1"}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "That username or email is already in use."
+    assert_includes last_response.body, "Already have an account?"
+    assert_includes last_response.body, "Register"
+    assert_includes last_response.body, %q(<button type="submit")
+
+    # bad username: existing username - admin
+    post "/register", {first_name: "George", last_name: "Washington",
+                       email: "gwash@potus.gov", username: "admin",
+                       password: "imthefirst1"}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "That username or email is already in use."
+    assert_includes last_response.body, "Already have an account?"
+    assert_includes last_response.body, "Register"
+    assert_includes last_response.body, %q(<button type="submit")
+  end
+
+  # post an valid register new user form
+  def test_post_register_valid
+    get "/logout"
+    delete_test_user
+
+    post "/register", {first_name: "George", last_name: "Washington",
+                       email: "gwash@potus.gov", username: "g-wash",
+                       password: "imthefirst1"}
+
+    assert_equal 302, last_response.status
+    assert_equal "You are now logged in to your new account, George Washington.", session[:success]
+    assert_equal "George Washington", session[:user_name]
+    assert_equal "Unassigned", session[:user_role]
+    assert(session[:user_id])
+
+    get last_response["Location"]
+
+    assert_includes last_response.body, "Welcome,"
+    assert_includes last_response.body, "You are logged in as"
+  end
+
+  # render login form
+  def test_get_login
+    get "/logout"
+
+    get "/login"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Username"
+    assert_includes last_response.body, "Password"
+    assert_includes last_response.body, "Don't have an account?"
+    assert_includes last_response.body, "Log In"
+    assert_includes last_response.body, %q(<button type="submit")
+  end
+
+  def test_login_invalid
+    get "/logout"
+
+    # correct username, wrong password
+    post "/login", {username: 'admin', password: 'wrongpassword'}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Username or password was incorrect."
+    assert_includes last_response.body, "Don't have an account?"
+    assert_includes last_response.body, "Log In"
+    assert_includes last_response.body, %q(<button type="submit")
+
+    # wrong username, correct password
+    post "/login", {username: 'admin_not', password: 'admin1admin1'}
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "Username or password was incorrect."
+    assert_includes last_response.body, "Don't have an account?"
+    assert_includes last_response.body, "Log In"
+    assert_includes last_response.body, %q(<button type="submit")
+  end
+
+  def test_login_valid
+    get "/logout"
+
+    post "/login", {username: 'pm', password: 'pm1pm1pm1'}
+
+    assert_equal 302, last_response.status
+    assert_equal "You are now logged in as Project Manager, DEMO_ProjectManager.", session[:success]
+    assert_equal "DEMO_ProjectManager", session[:user_name]
+    assert_equal "Project Manager", session[:user_role]
+    assert_equal "2", session[:user_id]
+
+    get last_response["Location"]
+
+    assert_includes last_response.body, "Welcome,"
+    assert_includes last_response.body, "You are logged in as"
   end
 end

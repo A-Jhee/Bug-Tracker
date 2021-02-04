@@ -15,6 +15,7 @@ gem "minitest"
 gem "minitest-reporters"
 gem "simplecov", require: false, group: :test
 gem "aws-sdk-s3"
+gem "bcrypt"
 
 # group :production do
 #   gem "puma"

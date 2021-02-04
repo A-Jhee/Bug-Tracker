@@ -1,0 +1,33 @@
+<h3>Create a new bugtracker account</h3>
+
+<form method="post" action="/register">
+  <fieldset>
+    <label>
+      <dd>First Name</dd>
+      <dt><input type="text" name="first_name" autocompelte="off" value="<%= params[:first_name] || "" %>" size="35" maxlength="100" required /></dt>
+    </label>
+    <label>
+      <dd>Last Name</dd>
+      <dt><input type="text" name="last_name" autocompelte="off" value="<%= params[:last_name] || "" %>" size="35" maxlength="100" required /></dt>
+    </label>
+    <label>
+      <dd>E-mail</dd>
+      <dt><input type="text" name="email" autocompelte="off" value="<%= params[:email] || "" %>" size="35" maxlength="100" required /></dt>
+    </label>
+    <label>
+      <dd>Username</dd>
+      <dt><input type="text" name="username" autocompelte="off" value="<%= params[:username] || "" %>" size="35" maxlength="100" required /></dt>
+    </label>
+    <label>
+      <dd>Password</dd>
+      <dt><input type="text" name="password" autocompelte="off" placeholder="Enter your password" size="35" minlength="8" maxlength="16" title="The Password must be at least 8 and at max 16 characters long." required /></dt>
+    </label>
+<!--     <label>
+      <dd>Confirm Password</dd>
+      <dt><input type="password" name="password2" autocompelte="off" placeholder="Enter your password" size="35" minlength="8" maxlength="100" title="Please enter the same Password as above" required /></dt>
+    </label> -->
+  </fieldset>
+  <br>
+  <button type="submit" class="enlarge">Register</button>
+  <p>Already have an account? <a href="/login">Log in instead</a></p>
+</form>

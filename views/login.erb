@@ -1,0 +1,17 @@
+<h3>Log In</h3>
+
+<form method="post" action="/login">
+  <fieldset>
+    <label>
+      <dd>Username</dd>
+      <dt><input type="text" name="username" autocompelte="off" value="<%= params[:username] || "" %>" size="35" maxlength="100" required /></dt>
+    </label>
+    <label>
+      <dd>Password</dd>
+      <dt><input type="text" name="password" autocompelte="off" placeholder="Enter your password" size="35" minlength="8" maxlength="16" required /></dt>
+    </label>
+  </fieldset>
+  <br>
+  <button type="submit" class="enlarge">Log In</button>
+  <p>Don't have an account? <a href="/register">Register</a></p>
+</form>
