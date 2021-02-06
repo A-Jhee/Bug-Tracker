@@ -1,33 +1,69 @@
-<h3>Create a new bugtracker account</h3>
+<div class="container-fluid">
+  <div class="row no-gutter">
+    <div class="d-none d-md-flex col-md-4 col-lg-6 bg-image-login-left"></div>
+    <div class="col-md-8 col-lg-6 bg-image-login-right">
+      <div class="login d-flex align-items-center pt-3 pb-5">
+        <div class="container">
+          <div class="row">
+            <div class="col-md-9 col-lg-8 mx-auto">
+              <div class="row">
+                <div class="col d-flex justify-content-center mb-4">
+                  <a href="/home">
+                    <img class="logo justify-content-center" src="/images/geckobugtracker_logo_plain.png" alt="Gecko Bug Tracker Logo">
+                  </a>
+                </div>
+              </div>
+              <h3 class="login-heading mb-4">Register</h3>
+              <form method="post" action="/register" class="needs-validation" novalidate>
+                <div class="row">
+                  <div class="col">
+                    <div class="form-label-group">
+                      <input type="text" name="first_name" id="first_name" class="form-control" placeholder="First Name" autocomplete="off" value="<%= params[:first_name] || "" %>" required autofocus />
+                      <label for="first_name">First Name</label>
+                      <div class="invalid-feedback">This field is required.</div>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="form-label-group">
+                      <input type="text" name="last_name" id="last_name" class="form-control" placeholder="Last Name" autocomplete="off" value="<%= params[:last_name] || "" %>" required />
+                      <label for="last_name">Last Name</label>
+                      <div class="invalid-feedback">This field is required.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-label-group">
+                  <input type="text" name="username" id="username" class="form-control <%= @username_valid_class_selector %>" placeholder="Username" autocomplete="off" value="<%= params[:username] || "" %>" autocompelte="off" required />
+                  <label for="username">Username</label>
+                  <div class="invalid-feedback">Please choose a unique username.</div>
+                </div>
 
-<form method="post" action="/register">
-  <fieldset>
-    <label>
-      <dd>First Name</dd>
-      <dt><input type="text" name="first_name" autocompelte="off" value="<%= params[:first_name] || "" %>" size="35" maxlength="100" required /></dt>
-    </label>
-    <label>
-      <dd>Last Name</dd>
-      <dt><input type="text" name="last_name" autocompelte="off" value="<%= params[:last_name] || "" %>" size="35" maxlength="100" required /></dt>
-    </label>
-    <label>
-      <dd>E-mail</dd>
-      <dt><input type="text" name="email" autocompelte="off" value="<%= params[:email] || "" %>" size="35" maxlength="100" required /></dt>
-    </label>
-    <label>
-      <dd>Username</dd>
-      <dt><input type="text" name="username" autocompelte="off" value="<%= params[:username] || "" %>" size="35" maxlength="100" required /></dt>
-    </label>
-    <label>
-      <dd>Password</dd>
-      <dt><input type="text" name="password" autocompelte="off" placeholder="Enter your password" size="35" minlength="8" maxlength="16" title="The Password must be at least 8 and at max 16 characters long." required /></dt>
-    </label>
-<!--     <label>
-      <dd>Confirm Password</dd>
-      <dt><input type="password" name="password2" autocompelte="off" placeholder="Enter your password" size="35" minlength="8" maxlength="100" title="Please enter the same Password as above" required /></dt>
-    </label> -->
-  </fieldset>
-  <br>
-  <button type="submit" class="enlarge">Register</button>
-  <p>Already have an account? <a href="/login">Log in instead</a></p>
-</form>
+                <div class="form-label-group">
+                  <input type="email" name="email" id="email" class="form-control <%= @email_valid_class_selector %>" placeholder="E-mail" autocomplete="off" value="<%= params[:email] || "" %>" required />
+                  <label for="email">E-mail</label>
+                  <div class="invalid-feedback">This field is required.</div>
+                </div>
+
+                <div class="form-label-group">
+                  <input type="password" name="password" id="password" class="form-control" placeholder="Password" pattern="^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).{8,16}$" required />
+                  <label for="password">Password</label>
+                  <div class="invalid-feedback">Password must be 8~16 characters with at least one lower case letter, upper case letter, and number.</div>
+                </div>
+
+                <div class="form-label-group">
+                  <input type="password" name="password_confirm" id="password_confirm" class="form-control <%= @password_confirm_valid_class_selector %>" placeholder="Confirm password" required />
+                  <label for="password_confirm">Confirm Password</label>
+                  <div class="invalid-feedback">Your passwords did not match.</div>
+                </div>
+
+                <button class="btn btn-lg btn-primary btn-block btn-login text-uppercase font-weight-bold mb-2" type="submit">Register</button>
+                <div class="login-tagline text-center">
+                  Already have an account? <a class="small" href="/login">Log in instead</a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

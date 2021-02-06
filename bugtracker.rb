@@ -29,12 +29,30 @@ configure(:development) do
 end
 
 helpers do
+  # What: Parses psql's timestamp data type to a more readable format.
+  #       Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
+  def parse_timestamp(sql_timestamp)
+    Time.parse(sql_timestamp).strftime("%m/%d/%Y %I:%M %p")
+  end
+
   def encrypt(password)
     BCrypt::Password.create(password)
   end
 
   def correct_password?(password, hashed_password)
     BCrypt::Password.new(hashed_password) == password
+  end
+
+  def password_match_valid?(password, password_confirm)
+    password == password_confirm ? "is-valid" : "is-invalid"
+  end
+
+  def unique_username_valid?(username)
+    @storage.unique_username?(username) ? "is-valid" : "is-invalid"
+  end
+
+  def unique_email_valid?(email)
+    @storage.unique_email?(email) ? "is-valid" : "is-invalid"
   end
 
   def login_for_role(demo_role)
@@ -44,15 +62,13 @@ helpers do
         session.clear
         session[:user_id] = login[:id]
         session[:user_name] = login[:name]
-        session[:user_role] = prettify_user_role(login[:role])
+        session[:user_role] = login[:role]
       end
     end
   end
 
-  # What: Parses psql's timestamp data type to a more readable format.
-  #       Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
-  def parse_timestamp(sql_timestamp)
-    Time.parse(sql_timestamp).strftime("%m/%d/%Y %I:%M %p")
+  def logged_in?
+    session[:user_id] ? true : false
   end
 
   def error_for_ticket_title(title)
@@ -242,14 +258,24 @@ helpers do
   end
 end
 
+PSQL_ROLE_LOGINS =
+  {
+    "admin" => ENV["DB_ADMIN_PASSWORD"],
+    "project_manager" => ENV["DB_PM_PASSWORD"],
+    "developer" => ENV["DB_DEV_PASSWORD"],
+    "quality_assurance" => ENV["DB_QA_PASSWORD"]
+  }
+
 before do
   if ENV["RACK_ENV"] == "test"
     session[:user_id] = "1"
     session[:user_name] = "DEMO_Admin"
     session[:user_role] = "admin"
-    @storage = DatabasePersistence.new("bugtrack_test")
+    @storage = DatabasePersistence.new("bugtrack_test", 'SFone', '')
+  elsif logged_in?
+    @storage = DatabasePersistence.new("bugtrack", session[:user_role], PSQL_ROLE_LOGINS[session[:user_role]])
   else
-    @storage = DatabasePersistence.new("bugtrack")
+    @storage = DatabasePersistence.new("bugtrack", ENV["DB_AUTH_USERNAME"], ENV["DB_AUTH_PASSWORD"])
   end
 end
 
@@ -258,7 +284,11 @@ after do
 end
 
 get "/" do
-  redirect "/dashboard"
+  redirect "/home"
+end
+
+get "/home" do
+  "Landing Page of Gecko Bug Tracker"
 end
 
 get "/dashboard" do
@@ -282,24 +312,26 @@ post "/register" do
   full_name = "#{params[:first_name]} #{params[:last_name]}"
   email = params[:email]
   username = params[:username]
-  password = encrypt(params[:password])
+  password = params[:password]
+  password_confirm = params[:password_confirm]
 
-  if @storage.valid_new_user?(username, email)
-    error = nil
-  else
-    error = "That username or email is already in use."
-  end
+  @username_valid_class_selector = unique_username_valid?(username)
+  @email_valid_class_selector = unique_email_valid?(email)
+  @password_confirm_valid_class_selector = password_match_valid?(password, password_confirm)
 
-  if error
-    session[:error] = error
+  server_side_validations = [@username_valid_class_selector,
+                             @email_valid_class_selector,
+                             @password_confirm_valid_class_selector]
+
+  if server_side_validations.include?("is-invalid")
     erb :register, layout: :register_layout
   else
-    user_id = @storage.register_new_user(full_name, username, password, email)
+    user_id = @storage.register_new_user(full_name, username, encrypt(password), email)
 
     session.clear
     session[:user_id] = user_id
     session[:user_name] = full_name
-    session[:user_role] = prettify_user_role("Unassigned")
+    session[:user_role] = "quality_assurance"
 
     session[:success] = "You are now logged in to your new account, #{full_name}."
     redirect "/dashboard"
@@ -333,20 +365,20 @@ post "/login" do
     session.clear
     session[:user_id] = user["id"]
     session[:user_name] = user["name"]
-    session[:user_role] = prettify_user_role(user["role"])
+    session[:user_role] = user["role"]
 
     session[:success] =
-      "You are now logged in as #{session[:user_role]}, #{session[:user_name]}."
+      "You are now logged in as #{prettify_user_role(session[:user_role])}, #{session[:user_name]}."
     redirect "/dashboard"
   end
 end
 
-post "/demo_login" do
+post "/login/demo" do
   demo_role = params[:demo_login_role]
   login_for_role(demo_role)
 
   session[:success] =
-      "You are now logged in as #{session[:user_role]}, #{session[:user_name]}."
+      "You are now logged in as #{prettify_user_role(session[:user_role])}, #{session[:user_name]}."
   redirect "/dashboard"
 end
 
@@ -356,6 +388,16 @@ get "/logout" do
 
   session[:success] = "You successfully logged out."
   redirect "/login"
+end
+
+# USER PROFILE
+get "/profile" do
+  "Page for user profile"
+end
+
+# MANAGE USERS
+get "/users" do
+  erb :users, layout: :layout
 end
 
 # -------------PROJECTS------------------------------------------------------- #

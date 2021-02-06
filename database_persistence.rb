@@ -33,8 +33,8 @@ class DatabasePersistence
 
   # What: Create a PG connection object and stores it as instance var.
   # Why:  Use it to make all psql interactions.
-  def initialize(psql_database_name)
-    @db = PG.connect(dbname: psql_database_name)
+  def initialize(db_name, psql_role, password)
+    @db = PG.connect(dbname: db_name, user: psql_role, password: password)
   end
 
   # What: Returns PG::Result object after performing psql statement
@@ -57,7 +57,7 @@ class DatabasePersistence
   # -------------USERS--------------------------------------------------------- #
 
   def register_new_user(full_name, username, password, email)
-    sql1 = "INSERT INTO users (name, email) VALUES ($1, $2);"
+    sql1 = "INSERT INTO users (name, role, email) VALUES ($1, 'quality_assurance', $2);"
     query(sql1, full_name, email)
 
     sql2 = "SELECT id FROM users WHERE name=$1 AND email=$2;"
@@ -71,15 +71,14 @@ class DatabasePersistence
     user_id
   end
 
-  def valid_new_user?(username, email)
-    sql = <<~SQL
-        SELECT ul.username, u.email
-          FROM user_logins AS ul
-     LEFT JOIN users AS u
-            ON ul.user_id = u.id
-         WHERE ul.username=$1 OR u.email=$2;
-    SQL
-    query(sql, username, email).first.nil?
+  def unique_username?(username)
+    sql = "SELECT username FROM user_logins WHERE username=$1;"
+    query(sql, username).first.nil?
+  end
+
+  def unique_email?(email)
+    sql = "SELECT email FROM users WHERE email=$1;"
+    query(sql, email).first.nil?
   end
 
   def correct_username?(username)

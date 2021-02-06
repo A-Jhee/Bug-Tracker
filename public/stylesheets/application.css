@@ -140,6 +140,11 @@ body {
   color: #66FCF1;
 }
 
+.logo {
+  width: 100px;
+  height: 100px;
+}
+
 .overline-title {
     font-size: 11px;
     line-height: 1.2;
