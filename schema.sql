@@ -144,18 +144,6 @@ CREATE TABLE ticket_attachments (
   FOREIGN KEY (uploader_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
--- STATEMENT CRAFTING TABLE ------------------------------------------------------------
-
--- "dev" (project manager) role will have the privileges to:
--- SELECT, INSERT, and UPDATE: "tickets"
--- SELECT and INSERT: "ticket_comments", "ticket_attachments"
--- SELECT: "ticket_update_history", "users"
--- SELECT and UPDATE: "projects", "projects_users_assignments"
-
-
-
--- PUSH DOWN TO NEAR END OF FILE ------------------------------------------------------------
-
 -- ------------------------------------------------------------
 
 -- "auth" role will have limited privileges to:
@@ -334,3 +322,11 @@ CREATE USER quality_assurance
 GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
+-- STATEMENT CRAFTING TABLE ------------------------------------------------------------
+
+-- "dev" (project manager) role will have the privileges to:
+-- SELECT, INSERT, and UPDATE: "tickets"
+-- SELECT and INSERT: "ticket_comments", "ticket_attachments"
+-- SELECT: "ticket_update_history", "users"
+-- SELECT and UPDATE: "projects", "projects_users_assignments"
+

@@ -292,7 +292,33 @@ get "/home" do
 end
 
 get "/dashboard" do
-  erb :dashboard, layout: :layout
+  @data = {
+    labels: ["January", "February", "March", "April", "May", "June", "July"],
+    datasets: [
+      {
+          label: "New Tickets",
+          backgroundColor: "#43f6ae",
+          borderColor: "#43f6ae",
+          data: [65, 59, 80, 81, 56, 55, 40]
+      },
+      {
+          label: "Resolved Tickets",
+          backgroundColor: "#2cc185",
+          borderColor: "#2cc185",
+          data: [28, 48, 40, 19, 86, 27, 90]
+      }
+    ]
+  }
+  @options = {
+              elements: {
+                rectangle: {
+                  borderWidth: 2,
+                  borderColor: 'rgb(0, 255, 0)',
+                  borderSkipped: 'bottom'
+                }
+              }
+            }
+  erb :dashboard, layout: false
 end
 
 # -------------USERS---------------------------------------------------------- #
