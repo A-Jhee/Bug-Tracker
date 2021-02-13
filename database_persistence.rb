@@ -1,4 +1,5 @@
 require "pg"
+require "date"
 
 class DatabasePersistence
   TICKET_PRIORITY = %w(Low High Critical)
@@ -163,6 +164,11 @@ class DatabasePersistence
     query(sql, project_id)
   end
 
+  def users_without_roles
+    sql = "SELECT * FROM users WHERE role = 'Unassigned';"
+    query(sql)
+  end
+
   # -------------PROJECTS------------------------------------------------------- #
   # -------------PROJECTS------------------------------------------------------- #
   # -------------PROJECTS------------------------------------------------------- #
@@ -263,6 +269,37 @@ class DatabasePersistence
     SQL
 
     query(sql)
+  end
+
+  def all_tickets_for_current_user(user)
+  end
+
+  def last_3days_tickets_for_current_user(user)
+    if user == "admin"
+      sql = <<~SQL
+            SELECT t.id,
+                   p.name AS project_name,
+                   t.title,
+                   t.status,
+                   t.priority,
+                   t.type,
+                   u.name AS dev_name,
+                   t.created_on
+              FROM tickets  AS t
+         LEFT JOIN projects AS p ON (p.id = t.project_id)
+         LEFT JOIN users    AS u ON (t.developer_id = u.id)
+             WHERE created_on::date = $1
+                OR created_on::date = $2
+                OR created_on::date = $3;
+      SQL
+      today = Date.today
+      dates = [today, today-1, today-2].map { |date| date.iso8601 }
+      query(sql, dates[0], dates[1], dates[2])
+    # else
+    #   get all projects the user is assigned to
+    #   get all tickets from only certain projects
+    #   select tickets that are opened within last 3 days
+    end
   end
 
   # Returns tickets for a specified project
@@ -385,6 +422,28 @@ class DatabasePersistence
         ORDER BY uploaded_on ASC;
     SQL
     query(sql, ticket_id)
+  end
+
+  def get_open_ticket_count(iso_date)
+    sql = <<~SQL
+          SELECT date(created_on), count(id)
+            FROM tickets
+           WHERE created_on::date = $1
+             AND status = 'Open'
+        GROUP BY created_on;
+    SQL
+    query(sql, iso_date)
+  end
+
+  def get_resolved_ticket_count(iso_date)
+    sql = <<~SQL
+          SELECT date(updated_on), count(id)
+            FROM tickets
+           WHERE updated_on::date = $1
+             AND status = 'Resolved'
+        GROUP BY updated_on;
+    SQL
+    query(sql, iso_date)
   end
 
   # ---------------------------------------------------------------------------- #

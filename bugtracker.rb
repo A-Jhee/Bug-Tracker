@@ -6,6 +6,7 @@ require "time"
 require "securerandom"
 require "aws-sdk-s3"
 require "bcrypt"
+require "date"
 
 require_relative "database_persistence"
 
@@ -120,6 +121,15 @@ helpers do
 
   def ticket_property_name_conversion
     DatabasePersistence::TICKET_PROPERTY_NAME_CONVERSION
+  end
+
+  def css_classify(ticket_status)
+    case ticket_status
+    when "Open"               then "openticket"
+    when "In Progress"        then "inprogress"
+    when "Resolved"           then "resolvedticket"
+    when "Add. Info Required" then "addinfo"
+    end
   end
 
   # What: Returns an array that contains a hash for each row of data returned
@@ -291,33 +301,44 @@ get "/home" do
   "Landing Page of Gecko Bug Tracker"
 end
 
+def array_for_javascript(arr)
+  "['#{arr.join('\',\'')}']"
+end
+
 get "/dashboard" do
-  @data = {
-    labels: ["January", "February", "March", "April", "May", "June", "July"],
-    datasets: [
-      {
-          label: "New Tickets",
-          backgroundColor: "#43f6ae",
-          borderColor: "#43f6ae",
-          data: [65, 59, 80, 81, 56, 55, 40]
-      },
-      {
-          label: "Resolved Tickets",
-          backgroundColor: "#2cc185",
-          borderColor: "#2cc185",
-          data: [28, 48, 40, 19, 86, 27, 90]
-      }
-    ]
-  }
-  @options = {
-              elements: {
-                rectangle: {
-                  borderWidth: 2,
-                  borderColor: 'rgb(0, 255, 0)',
-                  borderSkipped: 'bottom'
-                }
-              }
-            }
+  dates = [Date.today - 13]
+  13.times { |_| dates << dates[-1] + 1 }
+  x_axis_dates = dates.map do |date|
+    iso_hash = Date._iso8601(date.iso8601)
+    "#{Date::ABBR_MONTHNAMES[iso_hash[:mon]]} %02d" % [iso_hash[:mday]]
+  end
+  @x_axis_dates = array_for_javascript(x_axis_dates)
+
+  iso_dates = dates.map{ |date| date.iso8601 }
+
+  @open_ticket_count = iso_dates.map do |iso_date|
+    if @storage.get_open_ticket_count(iso_date).values.first
+      @storage.get_open_ticket_count(iso_date).values.first[1].to_i
+    else
+      0
+    end
+  end
+  @resolved_ticket_count = iso_dates.map do |iso_date|
+    if @storage.get_resolved_ticket_count(iso_date).values.first
+      @storage.get_resolved_ticket_count(iso_date).values.first[1].to_i
+    else
+      0
+    end
+  end
+
+  @open_ticket_count = array_for_javascript(@open_ticket_count)
+  @resolved_ticket_count = array_for_javascript(@resolved_ticket_count)
+
+  @last_3days_tickets = @storage.last_3days_tickets_for_current_user(session[:user_role])
+
+  @users_without_roles = @storage.users_without_roles
+  @tickets_without_devs = @storage.all_tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
+
   erb :dashboard, layout: false
 end
 
@@ -578,8 +599,9 @@ get "/tickets" do
 
   @unresolved_tickets = tickets.select { |ticket| ticket["status"] != "Resolved" }
   @resolved_tickets = tickets.select { |ticket| ticket["status"] == "Resolved" }
+  @submitted_tickets = tickets.select { |ticket| ticket["submitter_id"] == session[:user_id].to_s }
 
-  erb :tickets, layout: :layout
+  erb :tickets, layout: false
 end
 
 # VIEW NEW TICKET FORM
@@ -660,7 +682,12 @@ get "/tickets/:id" do
   @project_name, @developer_name, @submitter_name =
                                          load_names_for_ticket_details(@ticket)
 
-  erb :ticket, layout: :layout
+  @developers = @storage.all_developers                                         
+  @priorities = ticket_priorities
+  @statuses = ticket_statuses
+  @types = ticket_types
+
+  erb :ticket, layout: false
 end
 
 # POST TICKET EDITS
