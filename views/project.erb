@@ -1,72 +1,422 @@
-<section class="details">
-  <p>Project Name</p>
-  <h3><%= @project["name"] %></h3>
-  <br>
-  <p>Description</p>
-  <h3><%= @project["description"] %></h3>
-  <br>
-  <a href="/projects/<%= @project_id %>/edit">Edit Project</a>
-  <br>
-  <br>
-  <a href="/projects/<%= @project_id %>/users">Assign Users</a>
-</section>
-<br>
-<section class="assigned_users">
-  <h3>Assigned Users</h3>
-  <table class="reg_table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Role</th>
-        <th>E-mail</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @assigned_users.each do |user| %>
-        <tr>
-          <td><%= user["name"] %></td>
-          <td><%= prettify_user_role(user["role"]) %></td>
-          <td><%= user["email"] %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-</section>
-<br>
-<section class="tickets">
-  <h3>Tickets For This Project</h3>
-  <table class="reg_table">
-    <thead>
-      <tr>
-        <th>Ticket ID</th>
-        <th>Title</th>
-        <th>Priority</th>
-        <th>Status</th>
-        <th>Type</th>
-        <th>Assigned to</th>
-        <th>Submitted by</th>
-        <th>Created on</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @tickets.each do |ticket| %>
-        <tr>
-          <td><%= ticket["id"] %></td>
-          <td><%= ticket["title"] %></td>
-          <td><%= ticket["priority"] %></td>
-          <td><%= ticket["status"] %></td>
-          <td><%= ticket["type"] %></td>
-          <td><%= ticket["developer_name"] %></td>
-          <td><%= ticket["submitter_name"] %></td>
-          <td><%= ticket["created_on"] %></td>
-          <td>
-            <a href="/tickets/<%= ticket["id"] %>">View Ticket</a>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-</section>
-<br>
-<a href="/projects">Back to Projects List</a>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" href="/assets/img/favicon.png">
+    <title>GECKO bug tracker</title>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/stroke-7/style.css"/>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/perfect-scrollbar/css/perfect-scrollbar.css"/>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/datatables/datatables.net-bs4/css/dataTables.bootstrap4.css"/>
+    <link rel="stylesheet" href="/assets/css/app.css" type="text/css"/>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand navbar-dark mai-top-header">
+      <div class="container"><a class="navbar-brand" href="/dashboard"></a>
+        <ul class="nav navbar-nav mai-top-nav"></ul>
+        <ul class="navbar-nav float-lg-right mai-icons-nav">
+
+          <!-- notification -->
+          <li class="dropdown nav-item mai-notifications"><a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-expanded="false"><span class="icon s7-bell"></span><span class="indicator"></span></a>
+            <ul class="dropdown-menu">
+              <li>
+                <div class="title">Notifications</div>
+                <div class="mai-scroller-notifications">
+                  <div class="content">
+                    <ul>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-check"></span></div>
+                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-add-user"></span></div>
+                          <div class="content"><span class="desc">You have a new fiend request pending from <strong>John Doe</strong>.</span><span class="date">2 days ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-graph1"></span></div>
+                          <div class="content"><span class="desc">Your site visits have increased <strong>15.5%</strong> more since the last week.</span><span class="date">2 hours ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-check"></span></div>
+                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="footer"><a href="#">View all notifications</a></div>
+              </li>
+            </ul>
+          </li>
+        </ul>
+
+        <ul class="nav navbar-nav float-lg-right mai-user-nav">
+          <li class="dropdown nav-item">
+            <a class="dropdown-toggle nav-link" href="#" data-toggle="dropdown" role="button" aria-expanded="false">
+              <span id="profile_avatar" class="icon s7-user"></span>
+              <span class="user-name"><%= session[:user_name] %></span>
+              <span class="angle-down s7-angle-down"></span>
+            </a>
+            <div class="dropdown-menu" role="menu">
+              <a class="dropdown-item" href="/profile"><span id="profile_id" class="icon s7-id"></span>Profile</a>
+              <a class="dropdown-item" href="/logout"><span class="icon s7-power"></span>Log Out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <main>
+      <div class="mai-wrapper">
+        <nav class="navbar navbar-expand-lg mai-sub-header">
+          <div class="container">
+            <nav class="navbar navbar-expand-md">
+              <button class="navbar-toggler hidden-md-up collapsed" type="button" data-toggle="collapse" data-target="#mai-navbar-collapse" aria-controls="mai-navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="icon-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              </button>
+              <div class="navbar-collapse collapse mai-nav-tabs" id="mai-navbar-collapse">
+                <ul class="nav navbar-nav">
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/dashboard" role="button" aria-expanded="false">
+                      <span class="icon s7-home"></span>
+                      <span>Home</span>
+                    </a>
+                  </li>
+                  <li class="nav-item parent open">
+                    <a class="nav-link" href="#" role="button" aria-expanded="false">
+                      <span class="icon s7-display2"></span>
+                      <span>Projects</span>
+                    </a>
+                    <ul class="mai-nav-tabs-sub mai-sub-nav nav">
+                      <li class="nav-item">
+                        <a class="nav-link" href="/projects">
+                          <span class="icon s7-ticket"></span>
+                          <span class="name">My Projects</span>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/tickets" role="button" aria-expanded="false">
+                      <span class="icon s7-ticket"></span>
+                      <span>Tickets</span>
+                    </a>
+                  </li>
+
+                  <!--  -->
+                  <!--  -->
+                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
+                  <!--  -->
+                  <!--  -->
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                      <span class="icon s7-users"></span>
+                      <span>Users</span>
+                    </a>
+                  </li>
+
+                </ul>
+              </div>
+            </nav>
+          </div>
+        </nav>
+
+        <div class="main-content container ticket-details">
+          <div class="row pb-3">
+            <div class="col-md-3">
+              <a href="/projects" class="back-btn d-flex align-items-center" role="button">
+                <span class="icon s7-angle-left back-icon"></span>
+                <span >Back to Projects</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="row pb-3 pl-3">
+            <div class="col-md-12 d-flex align-items-center justify-content-between">
+              <h2>Project Details</h2>
+
+              <div class="d-flex justify-content-end ticket-option-btn">
+                <form action="/projects/<%= params[:id] %>/users" method="get">
+                  <button type="submit" class="btn btn-space btn-primary">
+                    <i class="icon icon-left s7-add-user mr-2"></i>Assign Users
+                  </button>
+                </form>
+                <button class="btn btn-space btn-primary md-trigger ml-2" data-modal="edit-project">
+                  <i class="icon icon-left s7-edit"></i> Edit
+                </button>
+              </div>
+              <div class="modal-container modal-effect-8" id="edit-project">
+                <div class="modal-content">
+                  <div class="modal-header modal-header-colored modal-header-colored-primary">
+                    <h4 class="modal-title">Edit</h4>
+                    <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
+                  </div>
+                  <div class="modal-body">
+                    <form method="post" action="/projects/<%= params[:id] %>" data-parsley-validate="" novalidate="">
+                      <div class="form-group">
+                        <label for="title">Project Name</label>
+                        <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" value="<%= params[:name] || @project["name"] %>" data-parsley-uniqueProjectName="" autocomplete="off"/>
+                      </div>
+                      <div class="form-group">
+                        <label for="desc">Description</label>
+                        <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= params[:description] || @project["description"] %></textarea>
+                      </div>
+                      <div class="row d-flex justify-content-end">
+                        <div class="col-lg-6">
+                          <p class="text-right">
+                            <button class="btn btn-space btn-primary" type="submit">Edit Project</button>
+                          </p>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-overlay"></div>
+
+            </div>
+          </div>
+
+          <% if session[:error] %>
+            <div class="alert alert-theme alert-danger alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-attention"></span></div>
+              <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+            </div>
+          <% end %>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header card-header-color card-header-color-primary pb-1 pt-4">
+                  <h2 class="title"><%= @project["name"] %></h2>
+                  <h5 class="mt-2">Project ID: #<%= @project_id %></h5>
+                </div>
+                <div class="card-body project-detail-main">
+                  <dl>
+                    <dt>MANAGED BY:</dt>
+                    <% if @project_manager == "Not Assigned" %>
+                      <dd class="font-weight-bold pm-not-assigned"><%= @project_manager %></dd>
+                    <% else %>
+                      <dd class="font-weight-bold"><%= @project_manager %></dd>
+                    <% end %>
+                  </dl>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card card-border-color card-border-color-primary">
+                <div class="card-header">Description</div>
+                <div class="card-body">
+                  <p><%= @project["description"] %></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card card-default">
+                <div class="card-header card-header-divider">
+                  <div class="tools">
+                    <span class="icon mdi mdi-chevron-down"></span>
+                    <span class="icon mdi mdi-refresh-sync"></span>
+                    <span class="icon mdi mdi-close"></span>
+                  </div>
+                  <span class="title">Tickets Overview</span>
+                  <span class="card-subtitle">Tickets created and resolved in the last 14 days.</span>
+                </div>
+                <div class="card-body">
+                  <canvas id="bar-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="card card-border-color card-border-color-primary card-table">
+                <div class="card-header">Assigned Users</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="table1">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Role</th>
+                          <th>E-mail</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @assigned_users.each do |user| %>
+                          <tr>
+                            <td><%= user["name"] %></td>
+                            <td><%= prettify_user_role(user["role"]) %></td>
+                            <td><%= user["email"] %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="card card-border-color card-border-color-primary card-table">
+                <div class="card-header">Project Tickets</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="table3">
+                      <thead>
+                        <tr>
+                          <th>Ticket ID</th>
+                          <th>Title</th>
+                          <th>Priority</th>
+                          <th>Status</th>
+                          <th>Type</th>
+                          <th>Assigned to</th>
+                          <th>Submitted by</th>
+                          <th>Created on</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @tickets.each do |ticket| %>
+                          <tr>
+                            <td><%= ticket["id"] %></td>
+                            <td><%= ticket["title"] %></td>
+                            <td><%= ticket["priority"] %></td>
+                            <td><%= ticket["status"] %></td>
+                            <td><%= ticket["type"] %></td>
+                            <td><%= ticket["developer_name"] %></td>
+                            <td><%= ticket["submitter_name"] %></td>
+                            <td><%= ticket["created_on"] %></td>
+                            <td>
+                              <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
+                            </td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+    <script src="/assets/lib/jquery/jquery.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/perfect-scrollbar/js/perfect-scrollbar.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js" type="text/javascript"></script>
+    <script src="/assets/js/app.js" type="text/javascript"></script>
+    <script src="/assets/lib/jquery.niftymodals/js/jquery.niftymodals.js" type="text/javascript"></script>
+    <script src="/assets/lib/parsley/parsley.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net/js/jquery.dataTables.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-bs4/js/dataTables.bootstrap4.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/dataTables.buttons.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.html5.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.flash.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.print.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.colVis.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js" type="text/javascript"></script>
+    <script src="/assets/js/app-tables-datatables.js" type="text/javascript"></script>
+    <script src="/assets/lib/chartjs/Chart.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      //-Set Nifty Modals defaults
+      $.fn.niftyModal('setDefaults',{
+        overlaySelector: '.modal-overlay',
+        contentSelector: '.modal-content',
+        closeSelector: '.modal-close',
+        classAddAfterOpen: 'modal-show',
+        classModalOpen: 'modal-open',
+        classScrollbarMeasure: 'modal-scrollbar-measure',
+        afterOpen: function(){
+         $("html").addClass('mai-modal-open');
+        },
+        afterClose: function(){
+          $("html").removeClass('mai-modal-open');
+        }
+      });
+
+      //-Chartjs barchart function
+      var App = (function () {
+        'use strict';
+
+        // var dateLabels = <%= @iso_dates %>;
+
+        App.ChartJs = function( ){
+
+          var randomScalingFactor = function() {
+            return Math.round(Math.random() * 100);
+          };
+
+          function barChart(){
+            //Set the chart colors
+            var color1 = tinycolor( "#43f6ae" );
+            var color2 = tinycolor( "#C5C6C7" );
+
+            //Get the canvas element
+            var ctx = document.getElementById("bar-chart");
+            
+            var data = {
+              labels: <%= @x_axis_dates %>,
+              datasets: [{
+                label: "Open",
+                borderColor: color1.toString(),
+                backgroundColor: color1.toString(),
+                data: <%= @open_ticket_count %>
+              }, {
+                label: "Resolved",
+                borderColor: color2.toString(),
+                backgroundColor: color2.toString(),
+                data: <%= @resolved_ticket_count %>
+              }]
+            };
+
+            var bar = new Chart(ctx, {
+              type: 'bar',
+              data: data,
+              scales: {
+                  xAxes: [{
+                      categoryPercentage: 0.5,
+                      barPercentage: 1.0
+                  }]
+              },
+              options: {
+                elements: {
+                  rectangle: {
+                    borderWidth: 2,
+                    borderColor: 'rgb(0, 255, 0)',
+                    borderSkipped: 'bottom'
+                  }
+                },
+                aspectRatio: 3
+              }
+            });
+          }
+
+          barChart();
+        };
+
+        return App;
+      })(App || {});
+      
+      $(document).ready(function(){
+        //-initialize the javascript
+        App.init();
+        App.ChartJs();
+        App.dataTables();
+        $('form').parsley();
+      });
+    </script>
+  </body>
+</html>

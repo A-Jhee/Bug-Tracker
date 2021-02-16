@@ -183,7 +183,19 @@ class DatabasePersistence
   end
 
   def all_projects
-    sql = "SELECT * FROM projects ORDER BY UPPER(name) ASC;"
+    sql = <<~SQL
+           SELECT p.id,
+                  p.name,
+                  p.description,
+                  u.name AS project_manager,
+                  count(t.id) AS ticket_count
+             FROM projects AS p
+        LEFT JOIN projects_users_assignments AS pua ON (pua.project_id = p.id AND pua.role = 'project_manager')
+        LEFT JOIN users AS u ON (pua.user_id = u.id)
+        LEFT JOIN tickets AS t ON (t.project_id = p.id)
+         GROUP BY p.id, u.name
+         ORDER BY UPPER(p.name) ASC;
+    SQL
 
     query(sql)
   end
@@ -433,6 +445,30 @@ class DatabasePersistence
         GROUP BY created_on;
     SQL
     query(sql, iso_date)
+  end
+
+  def get_open_ticket_count_for_project(iso_date, project_id)
+    sql = <<~SQL
+          SELECT date(tickets.created_on), count(tickets.id)
+            FROM tickets
+            JOIN projects ON projects.id = tickets.project_id
+           WHERE created_on::date = $1 AND projects.id = $2
+             AND status = 'Open'
+        GROUP BY date;
+    SQL
+    query(sql, iso_date, project_id)
+  end
+
+  def get_resolved_ticket_count_for_project(iso_date, project_id)
+    sql = <<~SQL
+          SELECT date(tickets.created_on), count(tickets.id)
+            FROM tickets
+            JOIN projects ON projects.id = tickets.project_id
+           WHERE updated_on::date = $1 AND projects.id = $2
+             AND status = 'Resolved'
+        GROUP BY date;
+    SQL
+    query(sql, iso_date, project_id)
   end
 
   def get_resolved_ticket_count(iso_date)

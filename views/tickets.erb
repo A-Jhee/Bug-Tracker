@@ -97,9 +97,9 @@
                     </a>
                     <ul class="mai-nav-tabs-sub mai-sub-nav nav">
                       <li class="nav-item">
-                        <a class="nav-link" href="/tickets/new/">
-                          <span class="icon s7-plus"></span>
-                          <span class="name">Create New Ticket</span>
+                        <a class="nav-link" href="/tickets">
+                          <span class="icon s7-ticket"></span>
+                          <span class="name">My Tickets</span>
                         </a>
                       </li>
                     </ul>
@@ -124,6 +124,106 @@
         </nav>
       </div>
       <div class="main-content container">
+
+        <div class="row pb-3 pl-3">
+          <div class="col-md-12 d-flex align-items-center justify-content-between">
+            <h2>Tickets Overview</h2>
+            <div class="d-flex justify-content-end ticket-option-btn">
+              <button class="btn btn-space btn-primary md-trigger" data-modal="create-new-ticket">
+                <i class="icon icon-left s7-plus mr-2"></i>Create New Ticket
+              </button>
+            </div>
+
+            <div class="modal-container modal-effect-8" id="create-new-ticket">
+              <div class="modal-content">
+                <div class="modal-header modal-header-colored modal-header-colored-primary">
+                  <h4 class="modal-title">Create New Ticket</h4>
+                  <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
+                </div>
+                <div class="modal-body">
+
+                  <form method="post" action="/tickets/new/<%= @splat_id %>" data-parsley-validate="" novalidate="">
+
+                    <div class="form-group row">
+                      <label class="col-12 col-form-label">Project</label>
+                      <div class="col-12">
+                        <select class="form-control custom-select" name="project_id" required>
+                          <% if @project_id %>
+                            <% @projects.each do |project| %>
+                              <% if project["id"] == @project_id %>
+                                <option value="<%= project["id"] %>" selected="selected"><%= project["name"] %></option>
+                              <% else %>
+                                <option value="<%= project["id"] %>"><%= project["name"] %></option>
+                              <% end %>
+                            <% end %>
+                          <% else %>
+                            <option value="" disable selected>--Select Project--</option>
+                              <% @projects.each do |project| %>
+                                <option value="<%= project["id"] %>"><%= project["name"] %></option>
+                              <% end %>
+                          <% end %>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="title">Title</label>
+                      <input class="form-control" type="text" id="title" name="title" parsley-trigger="change" required="" placeholder="Enter a ticket title" autocomplete="off"/>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="desc">Description</label>
+                      <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" placeholder="Write a description" autocomplete="off" rows="5"></textarea>
+                    </div>
+
+                    <div class="form-group row mt-1 ticket-edit-select">
+                      <div class="form-group row">
+                        <label class="col-12 col-form-label">Ticket Type</label>
+                        <div class="col-12">
+                          <div class="custom-controls-stacked mt-2 pl-5">
+                            <% @types.each do |category| %>
+                              <label class="custom-control custom-radio">
+                                <input class="custom-control-input" type="radio" name="type" value="<%= category %>" required/><span class="custom-control-label"><%= category %></span>
+                              </label>
+                            <% end %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-group row mt-1 ticket-edit-select">
+                        <div class="form-group row">
+                          <label class="col-12 col-form-label">Ticket Priority</label>
+                          <div class="col-12">
+                            <div class="custom-controls-stacked mt-2 pl-5">
+                              <% @priorities.each do |importance| %>
+                                <label class="custom-control custom-radio">
+                                  <input class="custom-control-input" type="radio" name="priority" value="<%= importance %>" required/><span class="custom-control-label"><%= importance %></span>
+                                </label>
+                              <% end %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    <div class="row d-flex justify-content-end">
+                      <div class="col-lg-6">
+                        <p class="text-right">
+                          <button class="btn btn-space btn-primary" type="submit">Create Ticket</button>
+                        </p>
+                      </div>
+                    </div>
+
+                  </form>
+
+                </div>
+              </div>
+            </div>
+            <div class="modal-overlay"></div>
+
+          </div>
+        </div>
+
         <div class="row">
           <div class="col-sm-12">
             <div class="tab-container mb-5">
@@ -309,6 +409,8 @@
     <script src="/assets/lib/perfect-scrollbar/js/perfect-scrollbar.min.js" type="text/javascript"></script>
     <script src="/assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js" type="text/javascript"></script>
     <script src="/assets/js/app.js" type="text/javascript"></script>
+    <script src="/assets/lib/jquery.niftymodals/js/jquery.niftymodals.js" type="text/javascript"></script>
+    <script src="/assets/lib/parsley/parsley.min.js" type="text/javascript"></script>
     <script src="/assets/lib/datatables/datatables.net/js/jquery.dataTables.js" type="text/javascript"></script>
     <script src="/assets/lib/datatables/datatables.net-bs4/js/dataTables.bootstrap4.js" type="text/javascript"></script>
     <script src="/assets/lib/datatables/datatables.net-buttons/js/dataTables.buttons.min.js" type="text/javascript"></script>
@@ -319,10 +421,27 @@
     <script src="/assets/lib/datatables/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js" type="text/javascript"></script>
     <script src="/assets/js/app-tables-datatables.js" type="text/javascript"></script>
     <script type="text/javascript">
+      //-Set Nifty Modals defaults
+      $.fn.niftyModal('setDefaults',{
+        overlaySelector: '.modal-overlay',
+        contentSelector: '.modal-content',
+        closeSelector: '.modal-close',
+        classAddAfterOpen: 'modal-show',
+        classModalOpen: 'modal-open',
+        classScrollbarMeasure: 'modal-scrollbar-measure',
+        afterOpen: function(){
+         $("html").addClass('mai-modal-open');
+        },
+        afterClose: function(){
+          $("html").removeClass('mai-modal-open');
+        }
+      });
+
       $(document).ready(function(){
         //-initialize the javascript
         App.init();
         App.dataTables();
+        $('form').parsley();
       });
     </script>
   </body>

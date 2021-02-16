@@ -323,6 +323,10 @@ GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
 -- STATEMENT CRAFTING TABLE ------------------------------------------------------------
+          SELECT date(tickets.created_on), count(tickets.id)
+            FROM tickets
+            JOIN projects ON projects.id = tickets.project_id
+           WHERE updated_on::date = $1 AND projects.id = $2
+             AND status = 'Resolved'
+        GROUP BY date;
 
-
-SELECT * FROM users WHERE role = 'Unassigned';

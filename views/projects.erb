@@ -1,105 +1,246 @@
-<div class="mai-wrapper">
-  <nav class="navbar navbar-expand-lg mai-sub-header">
-    <div class="container">
-      <nav class="navbar navbar-expand-md">
-        <button class="navbar-toggler hidden-md-up collapsed" type="button" data-toggle="collapse" data-target="#mai-navbar-collapse" aria-controls="mai-navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="icon-bar">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </button>
-        <div class="navbar-collapse collapse mai-nav-tabs" id="mai-navbar-collapse">
-          <ul class="nav navbar-nav">
-            <li class="nav-item parent">
-              <a class="nav-link" href="/dashboard" role="button" aria-expanded="false">
-                <span class="icon s7-home"></span>
-                <span>Home</span>
-              </a>
-            </li>
-            <li class="nav-item parent open">
-              <a class="nav-link" href="#" role="button" aria-expanded="false">
-                <span class="icon s7-display2"></span>
-                <span>Projects</span>
-              </a>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" href="/assets/img/favicon.png">
+    <title>GECKO bug tracker</title>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/stroke-7/style.css"/>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/perfect-scrollbar/css/perfect-scrollbar.css"/>
+    <link rel="stylesheet" type="text/css" href="/assets/lib/datatables/datatables.net-bs4/css/dataTables.bootstrap4.css"/>
+    <link rel="stylesheet" href="/assets/css/app.css" type="text/css"/>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand navbar-dark mai-top-header">
+      <div class="container"><a class="navbar-brand" href="/dashboard"></a>
+        <ul class="nav navbar-nav mai-top-nav"></ul>
+        <ul class="navbar-nav float-lg-right mai-icons-nav">
 
-              <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN + PM -->
-              <ul class="mai-nav-tabs-sub mai-sub-nav nav">
-                <li class="nav-item">
-                  <a class="nav-link" href="/projects/new">
-                    <span class="icon s7-plus"></span>
-                    <span class="name">Create New Project</span>
-                  </a>
-                </li>
-              </ul>
-            </li>
+          <!-- notification -->
+          <li class="dropdown nav-item mai-notifications"><a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-expanded="false"><span class="icon s7-bell"></span><span class="indicator"></span></a>
+            <ul class="dropdown-menu">
+              <li>
+                <div class="title">Notifications</div>
+                <div class="mai-scroller-notifications">
+                  <div class="content">
+                    <ul>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-check"></span></div>
+                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-add-user"></span></div>
+                          <div class="content"><span class="desc">You have a new fiend request pending from <strong>John Doe</strong>.</span><span class="date">2 days ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-graph1"></span></div>
+                          <div class="content"><span class="desc">Your site visits have increased <strong>15.5%</strong> more since the last week.</span><span class="date">2 hours ago</span></div></a></li>
+                      <li><a href="#">
+                          <div class="icon"><span class="s7-check"></span></div>
+                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="footer"><a href="#">View all notifications</a></div>
+              </li>
+            </ul>
+          </li>
+        </ul>
 
-            <li class="nav-item parent">
-              <a class="nav-link" href="/tickets" role="button" aria-expanded="false">
-                <span class="icon s7-ticket"></span>
-                <span>Tickets</span>
-              </a>
-            </li>
+        <ul class="nav navbar-nav float-lg-right mai-user-nav">
+          <li class="dropdown nav-item">
+            <a class="dropdown-toggle nav-link" href="#" data-toggle="dropdown" role="button" aria-expanded="false">
+              <span id="profile_avatar" class="icon s7-user"></span>
+              <span class="user-name"><%= session[:user_name] %></span>
+              <span class="angle-down s7-angle-down"></span>
+            </a>
+            <div class="dropdown-menu" role="menu">
+              <a class="dropdown-item" href="/profile"><span id="profile_id" class="icon s7-id"></span>Profile</a>
+              <a class="dropdown-item" href="/logout"><span class="icon s7-power"></span>Log Out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
 
-            <!--  -->
-            <!--  -->
-            <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
-            <!--  -->
-            <!--  -->
-            <li class="nav-item parent">
-              <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                <span class="icon s7-users"></span>
-                <span>Users</span>
-              </a>
-            </li>
+    <main>
+      <div class="mai-wrapper">
+        <nav class="navbar navbar-expand-lg mai-sub-header">
+          <div class="container">
+            <nav class="navbar navbar-expand-md">
+              <button class="navbar-toggler hidden-md-up collapsed" type="button" data-toggle="collapse" data-target="#mai-navbar-collapse" aria-controls="mai-navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="icon-bar">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              </button>
+              <div class="navbar-collapse collapse mai-nav-tabs" id="mai-navbar-collapse">
+                <ul class="nav navbar-nav">
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/dashboard" role="button" aria-expanded="false">
+                      <span class="icon s7-home"></span>
+                      <span>Home</span>
+                    </a>
+                  </li>
+                  <li class="nav-item parent open">
+                    <a class="nav-link" href="#" role="button" aria-expanded="false">
+                      <span class="icon s7-display2"></span>
+                      <span>Projects</span>
+                    </a>
+                    <ul class="mai-nav-tabs-sub mai-sub-nav nav">
+                      <li class="nav-item">
+                        <a class="nav-link" href="/projects">
+                          <span class="icon s7-ticket"></span>
+                          <span class="name">My Projects</span>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
 
-          </ul>
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/tickets" role="button" aria-expanded="false">
+                      <span class="icon s7-ticket"></span>
+                      <span>Tickets</span>
+                    </a>
+                  </li>
+
+                  <!--  -->
+                  <!--  -->
+                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT ONLY FOR ADMIN -->
+                  <!--  -->
+                  <!--  -->
+                  <li class="nav-item parent">
+                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                      <span class="icon s7-users"></span>
+                      <span>Users</span>
+                    </a>
+                  </li>
+
+                </ul>
+              </div>
+            </nav>
+          </div>
+        </nav>
+      </div>
+      <div class="main-content container">
+        <div class="row pb-3 pl-3">
+          <div class="col-md-12 d-flex align-items-center justify-content-between">
+            <h2>Projects Overview</h2>
+            <div class="d-flex justify-content-end ticket-option-btn">
+              <button class="btn btn-space btn-primary md-trigger" data-modal="create-new-project">
+                <i class="icon icon-left s7-plus mr-2"></i>Create New Project
+              </button>
+            </div>
+            <div class="modal-container modal-effect-8" id="create-new-project">
+              <div class="modal-content">
+                <div class="modal-header modal-header-colored modal-header-colored-primary">
+                  <h4 class="modal-title">Create New Project</h4>
+                  <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
+                </div>
+                <div class="modal-body">
+
+                  <form method="post" action="/projects/new" data-parsley-validate="" novalidate="">
+                    <div class="form-group">
+                      <label for="title">Project Name</label>
+                      <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" placeholder="Enter a project name" data-parsley-uniqueProjectName="" autocomplete="off"/>
+                    </div>
+                    <div class="form-group">
+                      <label for="desc">Description</label>
+                      <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" placeholder="Write a description" autocomplete="off" rows="5"></textarea>
+                    </div>
+                    <div class="row d-flex justify-content-end">
+                      <div class="col-lg-6">
+                        <p class="text-right">
+                          <button class="btn btn-space btn-primary" type="submit">Create Project</button>
+                        </p>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="modal-overlay"></div>
+          </div>
         </div>
-      </nav>
-    </div>
-  </nav>
 
-  <div class="main-content container">
-    <div class="row page-head">
-      <div class="col-md-4 page-head-heading">
-        <h1>Page Header</h1>
+        <% if session[:error] %>
+          <div class="alert alert-theme alert-danger alert-dismissible" role="alert">
+            <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+            <div class="icon"><span class="s7-attention"></span></div>
+            <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+          </div>
+        <% end %>
+
+        <div class="row project-preview-row">
+          <% @projects.each do |project| %>
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-header card-header-color card-header-color-primary">
+                  <div class="tools">
+                    <a href="/projects/<%= project['id'] %>" class="btn btn-rounded btn-space btn-dark">View</a>
+                  </div>
+                  <span class="title project-name"><%= project['name'] %></span>
+                </div>
+                <div class="card-body project-preview-desc">
+                  <p><%= project['description'] %></p>
+                </div>
+                <div class="card-body project-preview">
+                  <dl>
+                    <dt>PROJECT MANAGER:</dt>
+                    <% if project['project_manager'] %>
+                      <dd class="font-weight-bold"><%= project['project_manager'] %></dd>
+                    <% else %>
+                      <dd class="font-weight-bold pm-not-assigned">Not Assigned</dd>
+                    <% end %>
+                    <dt>TOTAL TICKETS:</dt>
+                    <dd class="font-weight-bold"><%= project['ticket_count'] %></dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
-      <div class="col-md-8 page-head-desc">
-        <h3>Morbi purus nisi, porttitor a sodales at, consectetur sit auctor<br> efficitur nisi. Aliquam erat volutpat. Morbi lobortis odio sem<br> lieto justo</h3>
-      </div>
-    </div>
-  </div>
-</div>
+    </main>
+    <script src="/assets/lib/jquery/jquery.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/perfect-scrollbar/js/perfect-scrollbar.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js" type="text/javascript"></script>
+    <script src="/assets/js/app.js" type="text/javascript"></script>
+    <script src="/assets/lib/jquery.niftymodals/js/jquery.niftymodals.js" type="text/javascript"></script>
+    <script src="/assets/lib/parsley/parsley.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net/js/jquery.dataTables.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-bs4/js/dataTables.bootstrap4.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/dataTables.buttons.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.html5.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.flash.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.print.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons/js/buttons.colVis.min.js" type="text/javascript"></script>
+    <script src="/assets/lib/datatables/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js" type="text/javascript"></script>
+    <script src="/assets/js/app-tables-datatables.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      //-Set Nifty Modals defaults
+      $.fn.niftyModal('setDefaults',{
+        overlaySelector: '.modal-overlay',
+        contentSelector: '.modal-content',
+        closeSelector: '.modal-close',
+        classAddAfterOpen: 'modal-show',
+        classModalOpen: 'modal-open',
+        classScrollbarMeasure: 'modal-scrollbar-measure',
+        afterOpen: function(){
+         $("html").addClass('mai-modal-open');
+        },
+        afterClose: function(){
+          $("html").removeClass('mai-modal-open');
+        }
+      });
 
-<a class="make_bold" href="/projects/new">CREATE A PROJECT</a>
-
-<table class="reg_table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Description</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% @projects.each do |project| %>
-      <tr>
-        <td><%= project["name"] %></td>
-        <td><%= project["description"] %></td>
-        <td>
-          <ul>
-            <li>
-              <a href="/projects/<%= project["id"] %>">Details</a>
-            </li>
-            <li>
-              <a href="/projects/<%= project["id"] %>/users">Assign Users</a>
-            </li>
-            <li>
-              <a href="/tickets/new/<%= project["id"] %>">Create A Ticket</a>
-            </li>
-          </ul>
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+      $(document).ready(function(){
+        //-initialize the javascript
+        App.init();
+        App.dataTables();
+        $('form').parsley();
+      });
+    </script>
+  </body>
+</html>

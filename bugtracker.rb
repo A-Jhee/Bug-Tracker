@@ -305,25 +305,34 @@ def array_for_javascript(arr)
   "['#{arr.join('\',\'')}']"
 end
 
-get "/dashboard" do
-  dates = [Date.today - 13]
-  13.times { |_| dates << dates[-1] + 1 }
-  x_axis_dates = dates.map do |date|
+def last_14_days
+  result = [Date.today - 13]
+  13.times { |_| result << result[-1] + 1 }
+  result
+end
+
+def x_axis_dates
+  last_14_days.map do |date|
     iso_hash = Date._iso8601(date.iso8601)
     "#{Date::ABBR_MONTHNAMES[iso_hash[:mon]]} %02d" % [iso_hash[:mday]]
   end
+end
+
+def last_14_iso_dates
+  last_14_days.map{ |date| date.iso8601 }
+end
+
+get "/dashboard" do
   @x_axis_dates = array_for_javascript(x_axis_dates)
 
-  iso_dates = dates.map{ |date| date.iso8601 }
-
-  @open_ticket_count = iso_dates.map do |iso_date|
+  @open_ticket_count = last_14_iso_dates.map do |iso_date|
     if @storage.get_open_ticket_count(iso_date).values.first
       @storage.get_open_ticket_count(iso_date).values.first[1].to_i
     else
       0
     end
   end
-  @resolved_ticket_count = iso_dates.map do |iso_date|
+  @resolved_ticket_count = last_14_iso_dates.map do |iso_date|
     if @storage.get_resolved_ticket_count(iso_date).values.first
       @storage.get_resolved_ticket_count(iso_date).values.first[1].to_i
     else
@@ -457,31 +466,21 @@ end
 # VIEW ALL USER'S ASSIGNED PROJECTS
 get "/projects" do
   @projects = @storage.all_projects
-  erb :projects, layout: :layout
-end
-
-# VIEW NEW PROJECT FORM
-get "/projects/new" do
-  erb :new_project, layout: :layout
+  erb :projects, layout: false
 end
 
 # POST A NEW PROJECT
 post "/projects/new" do
   @name = params[:name].strip
-  @description = params[:description].strip
 
-  error = error_for_project_name(@name) || error_for_description(@description)
+  error = error_for_project_name(@name)
 
   if error
     session[:error] = error
-    erb :new_project, layout: :layout
+    @projects = @storage.all_projects
+    redirect "/projects"
   else
     @storage.create_project(@name, @description)
-
-    # Automatically assigning currently logged in user as this new project's manager.
-    # It can either be an admin or a project manager only.
-    project_id = @storage.get_project_id(@name)
-    @storage.assign_user_to_project(project_id, session[:user_id], session[:user_role])
 
     session[:success] = "You have successfully submitted a new project."
     redirect "/projects"
@@ -550,7 +549,7 @@ end
 # VIEW EDIT PROJECT FORM
 get "/projects/:id/edit" do
   @project = @storage.get_project(params[:id])
-  erb :edit_project, layout: :layout
+  erb :edit_project, layout: false
 end
 
 # VIEW PROJECT DETAILS
@@ -560,7 +559,31 @@ get "/projects/:id" do
   @project = @storage.get_project(@project_id)
   @assigned_users = @storage.get_assigned_users(@project_id)
   @tickets = tickets_for_project_with_usernames(@project_id)
-  erb :project, layout: :layout
+
+  @x_axis_dates = array_for_javascript(x_axis_dates)
+
+  @open_ticket_count = last_14_iso_dates.map do |iso_date|
+    if @storage.get_open_ticket_count_for_project(iso_date, @project_id).values.first
+      @storage.get_open_ticket_count_for_project(iso_date, @project_id).values.first[1].to_i
+    else
+      0
+    end
+  end
+  @resolved_ticket_count = last_14_iso_dates.map do |iso_date|
+    if @storage.get_resolved_ticket_count_for_project(iso_date, @project_id).values.first
+      @storage.get_resolved_ticket_count_for_project(iso_date, @project_id).values.first[1].to_i
+    else
+      0
+    end
+  end
+
+  @open_ticket_count = array_for_javascript(@open_ticket_count)
+  @resolved_ticket_count = array_for_javascript(@resolved_ticket_count)
+
+  @project_manager = "Not Assigned"
+  @assigned_users.each { |user| @project_manager = user["name"] if user["role"] == "project_manager" }
+
+  erb :project, layout: false
 end
 
 # POST PROJECT EDITS
@@ -570,11 +593,14 @@ post "/projects/:id" do
   @description = params[:description].strip
   project_id = params[:id]
 
-  error = error_for_project_name(@name) || error_for_description(@description)
+  current_name = @storage.get_project_name(project_id)
+  if @name != current_name
+    error = error_for_project_name(@name)
+  end
 
   if error
     session[:error] = error
-    erb :edit_project, layout: :layout
+    redirect "/projects/#{project_id}"
   else
     @storage.update_project(@name, @description, project_id)
 
@@ -597,28 +623,25 @@ get "/tickets" do
   #        assigned project
   tickets = @storage.all_tickets
 
-  @unresolved_tickets = tickets.select { |ticket| ticket["status"] != "Resolved" }
-  @resolved_tickets = tickets.select { |ticket| ticket["status"] == "Resolved" }
-  @submitted_tickets = tickets.select { |ticket| ticket["submitter_id"] == session[:user_id].to_s }
-
-  erb :tickets, layout: false
-end
-
-# VIEW NEW TICKET FORM
-get "/tickets/new/*" do
-  # params[:splat] maybe a number indicating project id or left blank
-  # returns parameter as an array
-  # ex) "tickets/new/12"
-  #     params[:splat] = ["12"]
-  @splat_id = params[:splat].first
+  @splat_id = params[:splat].first unless params[:splat].nil?
 
   @types = ticket_types
   @priorities = ticket_priorities
 
   @projects = @storage.all_projects
-  @project_name = @storage.get_project_name(@splat_id) unless @splat_id.empty?
+  @project_name = @storage.get_project_name(@splat_id) unless params[:splat].nil?
 
-  erb :new_ticket, layout: :layout
+  @unresolved_tickets = tickets.select { |ticket| ticket["status"] != "Resolved" }
+  @resolved_tickets = tickets.select { |ticket| ticket["status"] == "Resolved" }
+  @submitted_tickets = tickets.select { |ticket| ticket["submitter_id"] == session[:user_id].to_s }
+
+  if params[:dev] == "unassigned"
+    @unresolved_tickets = tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
+    @resolved_tickets = []
+    @submitted_tickets = []
+  end
+
+  erb :tickets, layout: false
 end
 
 # POST A NEW TICKET
@@ -631,14 +654,9 @@ end
 post "/tickets/new/*" do
   title = params[:title].strip # ticket title REQ
   description = params[:description].strip # ticket description DEFAULT n/a REQ
-  
-  @types = ticket_types
   @type = params[:type] # ticket type REQ
-  
-  @priorities = ticket_priorities
   @priority = params[:priority] # ticket priority DEFAULT low
   
-  @projects = @storage.all_projects
 
   # Stores project id select via drop down menu in the event that
   # user fails text input validation (for 'title' and 'description').
@@ -646,30 +664,20 @@ post "/tickets/new/*" do
   # first time through this route, it'll be nil.
   @project_id = params[:project_id]
 
-  @splat_id = params[:splat].first
-  @project_name = @storage.get_project_name(@splat_id) unless @splat_id.empty?
+  # default developer_id to 0, or "Unassigned". project manager must assign dev.
+  @storage.create_ticket(
+                         'Open',
+                          title,
+                          description,
+                          @type,
+                          @priority,
+                          session[:user_id],
+                          @project_id,
+                          0
+                        )
 
-  error = error_for_ticket_title(title) || error_for_description(description)
-
-  if error
-    session[:error] = error
-    erb :new_ticket, layout: :layout
-  else
-    # default developer_id to 0, or "Unassigned". project manager must assign dev.
-    @storage.create_ticket(
-                           'Open',
-                            title,
-                            description,
-                            @type,
-                            @priority,
-                            session[:user_id],
-                            @project_id,
-                            0
-                          )
-
-    session[:success] = "You have successfully submitted a new ticket."
-    redirect "/tickets"
-  end
+  session[:success] = "You have successfully submitted a new ticket."
+  redirect "/tickets"
 end
 
 # VIEW TICKET DETAILS
@@ -694,82 +702,49 @@ end
 post "/tickets/:id" do
   title = params[:title].strip
   description = params[:description].strip
-
   ticket_id = params[:id]
-  @ticket = @storage.get_ticket(ticket_id)
 
-  @project_name = @storage.get_project_name(@ticket["project_id"])
-
-  @developers = @storage.all_developers
   @developer_id = params[:developer_id]
-  
-  @priorities = ticket_priorities
   @priority = params[:priority]
-
-  @statuses = ticket_statuses
   @status = params[:status]
-
-  @types = ticket_types
   @type = params[:type]
 
-  error = error_for_ticket_title(title) || error_for_description(description)
+  new_ticket_info = {
+                      "id"           => ticket_id,
+                      "title"        => title,
+                      "description"  => description,
+                      "priority"     => @priority,
+                      "status"       => @status,
+                      "type"         => @type,
+                      "developer_id" => @developer_id
+                    }
 
-  if error
-    session[:error] = error
-    erb :edit_ticket, layout: :layout
+  current_ticket_info = @storage.get_ticket(ticket_id)
+
+  # compares new_ticket_info against current_ticket_info to see if any
+  # changes were made.
+  #
+  # returns a hash of only changing key:value pairs, otherwise nil.
+  updates = get_updates_hash(new_ticket_info, current_ticket_info)
+
+  if updates
+    # updating the changes to the "tickets" table
+    @storage.update_ticket(updates, ticket_id)
+    session[:success] = "You have successfully made changes to a ticket."
+
+    # making note of the updates in the "ticket_update_history" table
+    pre_updates = get_pre_updates_hash(new_ticket_info, current_ticket_info)
+    
+    # creates an array of array(s) of parameters to be passed into psql statement w/
+    # placeholders. each updating value gets one array of parameters.
+    update_history_arr =
+      get_update_history_arr(pre_updates, updates, session[:user_id], params[:id])
+
+    @storage.create_ticket_history(update_history_arr)
+    redirect "/tickets/#{ticket_id}"
   else
-    new_ticket_info = {
-                        "id"           => ticket_id,
-                        "title"        => title,
-                        "description"  => description,
-                        "priority"     => @priority,
-                        "status"       => @status,
-                        "type"         => @type,
-                        "developer_id" => @developer_id
-                      }
-
-    current_ticket_info = @storage.get_ticket(ticket_id)
-
-    # compares new_ticket_info against current_ticket_info to see if any
-    # changes were made.
-    #
-    # returns a hash of only changing key:value pairs, otherwise nil.
-    updates = get_updates_hash(new_ticket_info, current_ticket_info)
-
-    if updates
-      # updating the changes to the "tickets" table
-      @storage.update_ticket(updates, ticket_id)
-      session[:success] = "You have successfully made changes to a ticket."
-
-      # making note of the updates in the "ticket_update_history" table
-      pre_updates = get_pre_updates_hash(new_ticket_info, current_ticket_info)
-      
-      # creates an array of array(s) of parameters to be passed into psql statement w/
-      # placeholders. each updating value gets one array of parameters.
-      update_history_arr =
-        get_update_history_arr(pre_updates, updates, session[:user_id], params[:id])
-
-      @storage.create_ticket_history(update_history_arr)
-      redirect "/tickets/#{ticket_id}"
-    else
-      session[:error] = "You did not make any changes. \
-         Make any changes to this ticket, or you can return back to Tickets list."
-      redirect "/tickets/#{ticket_id}/edit"
-    end
+    redirect "/tickets/#{ticket_id}"
   end
-end
-
-# VIEW EDIT TICKET FORM
-get "/tickets/:id/edit" do
-  @ticket = @storage.get_ticket(params[:id])
-  @project_name = @storage.get_project_name(@ticket["project_id"])
-  @developers = @storage.all_developers
-
-  @priorities = ticket_priorities
-  @statuses = ticket_statuses
-  @types = ticket_types
-
-  erb :edit_ticket, layout: :layout
 end
 
 # POST TICKET COMMENT

@@ -151,7 +151,7 @@
                 <div class="card-body">
                   <p>You have <%= @tickets_without_devs.size %> ticket waiting for assignment.</p>
                   <form action="/tickets" method="get">
-                    <input type="hidden" name="query" value="unassigned">
+                    <input type="hidden" name="dev" value="unassigned">
                     <button type="submit" class="btn btn-primary">Ticket Assignment</button>
                   </form>
                 </div>
@@ -260,13 +260,11 @@
                 label: "Open",
                 borderColor: color1.toString(),
                 backgroundColor: color1.toString(),
-                // barPercentage: 0.5,
                 data: <%= @open_ticket_count %>
               }, {
                 label: "Resolved",
                 borderColor: color2.toString(),
                 backgroundColor: color2.toString(),
-                // barPercentage: 0.5,
                 data: <%= @resolved_ticket_count %>
               }]
             };

@@ -97,9 +97,9 @@
                     </a>
                     <ul class="mai-nav-tabs-sub mai-sub-nav nav">
                       <li class="nav-item">
-                        <a class="nav-link" href="/tickets/new/">
-                          <span class="icon s7-plus"></span>
-                          <span class="name">Create New Ticket</span>
+                        <a class="nav-link" href="/tickets">
+                          <span class="icon s7-ticket"></span>
+                          <span class="name">My Tickets</span>
                         </a>
                       </li>
                     </ul>
@@ -125,28 +125,24 @@
 
         <div class="main-content container ticket-details">
           <div class="row pb-3">
-            <div class="col-md-12">
+            <div class="col-md-3">
               <a href="/tickets" class="back-btn d-flex align-items-center" role="button">
                 <span class="icon s7-angle-left back-icon"></span>
                 <span >Back to Tickets</span>
               </a>
             </div>
           </div>
-
           <div class="row pb-3 pl-3">
             <div class="col-md-12 d-flex align-items-center justify-content-between">
-              <h1>Ticket Details</h1>
+              <h2>Ticket Details</h2>
               <div class="d-flex justify-content-end ticket-option-btn">
-
                 <button class="btn btn-space btn-primary md-trigger" data-modal="add-attachment">
                   <i class="icon icon-left s7-upload"></i>Add Attachment
                 </button>
-
                 <button class="btn btn-space btn-primary md-trigger ml-2" data-modal="edit-ticket">
                   <i class="icon icon-left s7-edit"></i> Edit
                 </button>
               </div>
-
               <div class="modal-container modal-effect-8" id="add-attachment">
                 <div class="modal-content">
                   <div class="modal-header modal-header-colored modal-header-colored-primary">
@@ -174,7 +170,6 @@
                   </div>
                 </div>
               </div>
-
               <div class="modal-container modal-effect-8" id="edit-ticket">
                 <div class="modal-content">
                   <div class="modal-header modal-header-colored modal-header-colored-primary">
@@ -182,18 +177,15 @@
                     <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
                   </div>
                   <div class="modal-body">
-
                     <form method="post" action="/tickets/<%= params[:id] %>" data-parsley-validate="" novalidate="">
                       <div class="form-group mt-1">
                         <label>Title</label>
-                        <input class="form-control" type="text" name="title" parsley-trigger="change" required="" value="<%= params[:title] || @ticket["title"] %>" autocomplete="off">
+                        <input class="form-control" type="text" name="title" parsley-trigger="change" required="" value="<%= @ticket["title"] %>" autocomplete="off">
                       </div>
-
                       <div class="form-group mt-1">
                         <label for="desc2">Description</label>
-                        <textarea class="form-control" id="desc2" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= params[:description] || @ticket["description"] %></textarea>
+                        <textarea class="form-control" id="desc2" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= @ticket["description"] %></textarea>
                       </div>
-
                       <div class="form-group row mt-1 ticket-edit-select">
                         <div class="form-group row">
                           <label class="col-12 col-form-label">Ticket Status</label>
@@ -202,11 +194,11 @@
                               <% @statuses.each do |sitrep| %>
                                 <% if sitrep == @ticket["status"] %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-status" value="<%= sitrep %>" checked=""><span class="custom-control-label"><%= sitrep %></span>
+                                    <input class="custom-control-input" type="radio" name="status" value="<%= sitrep %>" checked=""><span class="custom-control-label"><%= sitrep %></span>
                                   </label>
                                 <% else %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-status" value="<%= sitrep %>"><span class="custom-control-label"><%= sitrep %></span>
+                                    <input class="custom-control-input" type="radio" name="status" value="<%= sitrep %>"><span class="custom-control-label"><%= sitrep %></span>
                                   </label>
                                 <% end %>
                               <% end %>
@@ -214,11 +206,10 @@
                           </div>
                         </div>
                       </div>
-
                       <div class="form-group row">
                         <label class="col-12 col-form-label">Assigned Developer</label>
                         <div class="col-12">
-                          <select class="form-control custom-select">
+                          <select class="form-control custom-select" name="developer_id">
                             <% @developers.each do |developer| %>
                               <% if developer["id"] == @developer_id %>
                                 <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
@@ -229,7 +220,6 @@
                           </select>
                         </div>
                       </div>
-
                       <div class="form-group row mt-1 ticket-edit-select">
                         <div class="form-group row">
                           <label class="col-12 col-form-label">Ticket Type</label>
@@ -238,11 +228,11 @@
                               <% @types.each do |category| %>
                                 <% if category == @ticket["type"] %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-type" value="<%= category %>" checked=""><span class="custom-control-label"><%= category %></span>
+                                    <input class="custom-control-input" type="radio" name="type" value="<%= category %>" checked=""><span class="custom-control-label"><%= category %></span>
                                   </label>
                                 <% else %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-type" value="<%= category %>"><span class="custom-control-label"><%= category %></span>
+                                    <input class="custom-control-input" type="radio" name="type" value="<%= category %>"><span class="custom-control-label"><%= category %></span>
                                   </label>
                                 <% end %>
                               <% end %>
@@ -250,7 +240,6 @@
                           </div>
                         </div>
                       </div>
-
                       <div class="form-group row mt-1 ticket-edit-select">
                         <div class="form-group row">
                           <label class="col-12 col-form-label">Ticket Priority</label>
@@ -259,11 +248,11 @@
                               <% @priorities.each do |importance| %>
                                 <% if importance == @ticket["priority"] %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-priority" value="<%= importance %>" checked=""><span class="custom-control-label"><%= importance %></span>
+                                    <input class="custom-control-input" type="radio" name="priority" value="<%= importance %>" checked=""><span class="custom-control-label"><%= importance %></span>
                                   </label>
                                 <% else %>
                                   <label class="custom-control custom-radio">
-                                    <input class="custom-control-input" type="radio" name="radio-priority" value="<%= importance %>"><span class="custom-control-label"><%= importance %></span>
+                                    <input class="custom-control-input" type="radio" name="priority" value="<%= importance %>"><span class="custom-control-label"><%= importance %></span>
                                   </label>
                                 <% end %>
                               <% end %>
@@ -271,7 +260,6 @@
                           </div>
                         </div>
                       </div>
-
                       <div class="row d-flex justify-content-end">
                         <div class="col-lg-6">
                           <p class="text-right">
@@ -280,212 +268,183 @@
                         </div>
                       </div>
                     </form>
-
                   </div>
                 </div>
               </div>
-
               <div class="modal-overlay"></div>
+            </div>
+          </div>
 
+          <div class="row">
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-header card-header-color card-header-color-primary pb-1 pt-4">
+                  <h2 class="title"><%= @ticket["title"].upcase %></h2>
+                  <h5 class="mt-2">Ticket ID: #<%= @ticket["id"] %></h5>
+                </div>
+                <div class="card-body ticket-detail-main">
+                  <dl>
+                    <dt>STATUS:</dt>
+                    <dd class="ticket-status <%= css_classify(@ticket['status']) %> font-weight-bold"><%= @ticket["status"] %></dd>
+                    <dt>TYPE:</dt>
+                    <dd><%= @ticket["type"] %></dd>
+                    <dt>PRIORITY:</dt>
+                    <dd class="ticket-priority <%= @ticket['priority'].downcase %> font-weight-bold"><%= @ticket["priority"] %></dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card card-border-color card-border-color-primary">
+                <div class="card-header">
+                  <span class="card-subtitle pt-0">ASSIGNED TO</span>
+                  <h3 class="title"><%= @developer_name %></h3>
+                </div>
+                <div class="card-body">
+                  <span class="card-subtitle pt-0">PROJECT</span>
+                  <h4 class="ticket-details-spacer"><%= @project_name %></h4>
+
+                  <span class="card-subtitle pt-0">SUBMITTED BY:</span>
+                  <h4 class="ticket-details-spacer"><%= @submitter_name %></h4>
+                  <span class="card-subtitle pt-0">CREATED ON:</span>
+                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket["created_on"]) %></h5>
+                  <span class="card-subtitle pt-0">LAST UPDATED ON:</span>
+                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket["updated_on"]) %></h5>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card card-border-color card-border-color-primary">
+                <div class="card-header">Description</div>
+                <div class="card-body">
+                  <p><%= @ticket["description"] %></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="card card-border-color card-border-color-primary card-table">
+                <div class="card-header">Attachments</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="table1">
+                      <thead>
+                        <tr>
+                          <th>File</th>
+                          <th>Note</th>
+                          <th>Uploaded By</th>
+                          <th>Uploaded On</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @attachments.each do |file| %>
+                          <tr>
+                            <td>
+                              <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>" target="_blank"><%= file["filename"] %></a>
+                            </td>
+                            <td><%= file["notes"] %></td>
+                            <td><%= file["uploader_name"] %></td>
+                            <td><%= parse_timestamp(file["uploaded_on"]) %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="card card-border-color card-border-color-primary card-table">
+                <div class="card-header">Ticket Update History</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="table3">
+                      <thead>
+                        <tr>
+                          <th>Updated On</th>
+                          <th>Property</th>
+                          <th>Previous Value</th>
+                          <th>Current Value</th>
+                          <th>Updated By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @histories.each do |history| %>
+                          <tr>
+                            <td><%= parse_timestamp(history["updated_on"]) %></td>
+                            <td><%= prettify_property_name(history["property"]) %></td>
+                            <td class="update-previous"><%= history["previous_value"] %></td>
+                            <td class="update-current"><%= history["current_value"] %></td>
+                            <td><%= history["user_id"] %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="card card-border-color card-border-color-primary card-table">
+                <div class="card-header">Comments</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="table2">
+                      <thead>
+                        <tr>
+                          <th>Created On</th>
+                          <th>Message</th>
+                          <th>Commenter</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @comments.each do |comment| %>
+                          <tr>
+                            <td><%= parse_timestamp(comment["created_on"]) %></td>
+                            <td><%= comment["message"] %></td>
+                            <td><%= comment["commenter"] %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="row">
             <div class="col-md-12">
-              <div class="card">
-                <div class="card-header card-header-color card-header-color-primary">
-                  <span class="title">Ticket Details</span>
-                  <span class="card-subtitle">Ticket ID: #<%= params[:id] %></span>
-                </div>
-                <div class="card-body">
-                  <p> Quisque gravida aliquam diam at cursus, quisque laoreet ac lectus a rhoncusac tempus odio. </p>
-                  <p>Aliquam posuere volutpat turpis, ut euimod diam pellentesque at. Sed sit amet nulla a dui dignisim euismod. Morbi luctus elementum dictum. Donec convallis mattis elit id varius. Quisque facilisis sapien quis mauris,, erat condimentum.</p>
-                </div>
-              </div>
-            </div>
-
-              <div class="card card-default">
-                <section class="details">
-                  <h3>Ticket Details</h3>
-                  <a href="/tickets/<%= params[:id] %>/edit">Edit Ticket</a>
-                  <br>
-                  <dl class="prperties">
-                    <dt>
-                      TICKET TITLE
-                    </dt>
-                    <dd>
-                      <%= @ticket["title"] %>
-                    </dd>
-
-                    <dt>
-                      TICKET DESCRIPTION
-                    </dt>
-                    <dd>
-                      <%= @ticket["description"] %>
-                    </dd>
-
-                    <dt>
-                      ASSIGNED DEVELOPER
-                    </dt>
-                    <dd>
-                      <%= @developer_name %>
-                    </dd>
-
-                    <dt>
-                      SUBMITTER
-                    </dt>
-                    <dd>
-                      <%= @submitter_name %>
-                    </dd>
-
-                    <dt>
-                      PROJECT
-                    </dt>
-                    <dd>
-                      <%= @project_name %>
-                    </dd>
-
-                    <dt>
-                      TICKET PRIORITY
-                    </dt>
-                    <dd>
-                      <%= @ticket["priority"] %>
-                    </dd>
-
-                    <dt>
-                      TICKET STATUS
-                    </dt>
-                    <dd>
-                      <%= @ticket["status"] %>
-                    </dd>
-
-                    <dt>
-                      TICKET TYPE
-                    </dt>
-                    <dd>
-                      <%= @ticket["type"] %>
-                    </dd>
-
-                    <dt>
-                      CREATED ON
-                    </dt>
-                    <dd>
-                      <%= parse_timestamp(@ticket["created_on"]) %>
-                    </dd>
-
-                    <dt>
-                      UPDATED ON
-                    </dt>
-                    <dd>
-                      <%= parse_timestamp(@ticket["updated_on"]) %>
-                    </dd>
-                  </dl>
-                </section>
-
-                <br>
-
-                <section class="attachments">
-                  <h3>Attachments</h3>
-                  <form method="post" action="/upload/<%= params[:id] %>" enctype="multipart/form-data">
-                    <input type="file" name="file" value="" />
-                    <br>
-                    <label>
-                      Add Notes
-                      <input type="text" name="notes" value="n/a" />
-                    </label>
-                    <br>
-                    <button type="submit">Add Attachment</button>
+              <div class="card card-border-color card-border-color-primary">
+                <div class="card-header card-header-divider">Comments<span class="card-subtitle">Add a new comment to this ticket</span></div>
+                <div class="card-body pl-sm-5">
+                  <form method="post" action="/tickets/<%= params[:id] %>/comment">
+                    <div class="form-group row justify-content-center">
+                      <div class="col-12 col-sm-10">
+                        <textarea class="form-control" name="comment" placeholder="Leave your comments here." required="" autocomplete="off" rows="12"></textarea>
+                      </div>
+                    </div>
+                    <div class="form-group row text-right">
+                      <div class="col col-sm-10 offset-sm-1">
+                        <button class="btn btn-space btn-primary" type="submit">Post Comment</button>
+                      </div>
+                    </div>
                   </form>
-
-                  <br>
-
-                  <table class="reg_table">
-                    <tr>
-                      <th>File</th>
-                      <th>Added By</th>
-                      <th>Notes</th>
-                      <th>Uploaded On</th>
-                    </tr>
-
-                    <% @attachments.each do |file| %>
-                      <tr>
-                        <td>
-                          <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>" target="_blank"><%= file["filename"] %></a>
-                        </td>
-                        <td><%= file["uploader_name"] %></td>
-                        <td><%= file["notes"] %></td>
-                        <td><%= parse_timestamp(file["uploaded_on"]) %></td>
-                      </tr>
-                    <% end %>
-                  </table>
-                </section>
-
-                <br>
-
-                <section class="comments">
-                  <h3>Comments</h3>
-                  <form action="/tickets/<%= params[:id] %>/comment" method="post">
-                    <input name="comment" placeholder="Leave your comments here." type="text" value="<%= params[:comment] || "" %>" size="60" />
-                    <button type="submit">Add Comment</button>
-                  </form>
-
-                  <br>
-
-                  <table class="reg_table">
-                    <tr>
-                      <th>Commenter</th>
-                      <th>Message</th>
-                      <th>Created On</th>
-                      <th></th>
-                    </tr>
-
-                    <% @comments.each do |comment| %>
-                      <tr>
-                        <td><%= comment["commenter"] %></td>
-                        <td><%= comment["message"] %></td>
-                        <td><%= parse_timestamp(comment["created_on"]) %></td>
-                        <td>
-                          <form class="delete" method="post" action="/tickets/<%= params[:id] %>/comment/<%= comment["id"] %>/destroy">
-                            <button class="delete" type="submit">Delete Comment</button>
-                          </form>
-                        </td>
-                      </tr>
-                    <% end %>
-                    
-                  </table>
-                </section>
-
-                <br>
-
-                <section class="history">
-                  <h3>Ticket Update History</h3>
-                  <table class="reg_table">
-                    <tr>
-                      <th>Property</th>
-                      <th>Previous Value</th>
-                      <th>Current Value</th>
-                      <th>Updated On</th>
-                      <th>Updated By</th>
-                    </tr>
-
-                    <% @histories.each do |history| %>
-                      <tr>
-                        <td><%= prettify_property_name(history["property"]) %></td>
-                        <td><%= history["previous_value"] %></td>
-                        <td><%= history["current_value"] %></td>
-                        <td><%= parse_timestamp(history["updated_on"]) %></td>
-                        <td><%= history["user_id"] %></td>
-                      </tr>
-                    <% end %>
-                  </table>
-                </section>
-
-                <br>
-
-                <a href="/tickets">Back to Tickets List</a>
+                </div>
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </main>
@@ -524,6 +483,7 @@
       $(document).ready(function(){
         //-initialize the javascript
         App.init();
+        App.dataTables();
         $('form').parsley();
       });
     </script>
