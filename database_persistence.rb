@@ -169,6 +169,11 @@ class DatabasePersistence
     query(sql)
   end
 
+  def assign_user_role(role, user_id)
+    sql = "UPDATE users SET role=$1 WHERE id=$2;"
+    query(sql, role, user_id)
+  end
+
   # -------------PROJECTS------------------------------------------------------- #
   # -------------PROJECTS------------------------------------------------------- #
   # -------------PROJECTS------------------------------------------------------- #

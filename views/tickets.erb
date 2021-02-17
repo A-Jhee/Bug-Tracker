@@ -271,11 +271,6 @@
                                       <td><%= parse_timestamp(ticket["created_on"])[0, 10] %></td>
                                       <td>
                                         <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
-                                        <form method="post" action="/tickets/<%= ticket["id"] %>/destroy">
-                                          <button class="btn btn-space btn-danger" type="submit">
-                                            <i class="icon icon-left s7-close"></i>Delete
-                                          </button>
-                                        </form>
                                       </td>
                                     </tr>
                                   <% end %>
@@ -326,11 +321,6 @@
                                       <td><%= parse_timestamp(ticket["created_on"])[0, 10] %></td>
                                       <td>
                                         <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
-                                        <form method="post" action="/tickets/<%= ticket["id"] %>/destroy">
-                                          <button class="btn btn-space btn-danger" type="submit">
-                                            <i class="icon icon-left s7-close"></i>Delete
-                                          </button>
-                                        </form>
                                       </td>
                                     </tr>
                                   <% end %>
@@ -381,11 +371,6 @@
                                       <td><%= parse_timestamp(ticket["created_on"])[0, 10] %></td>
                                       <td>
                                         <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
-                                        <form method="post" action="/tickets/<%= ticket["id"] %>/destroy">
-                                          <button class="btn btn-space btn-danger" type="submit">
-                                            <i class="icon icon-left s7-close"></i>Delete
-                                          </button>
-                                        </form>
                                       </td>
                                     </tr>
                                   <% end %>

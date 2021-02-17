@@ -453,7 +453,22 @@ end
 
 # MANAGE USERS
 get "/users" do
-  erb :users, layout: :layout
+  @users = @storage.all_users.reject { |user| user["id"] == "0" }
+
+  @roles = DatabasePersistence::USER_ROLE_CONVERSION.keys
+
+  erb :assign_roles, layout: false
+end
+
+post "/users" do
+  user_id = params[:user_id]
+  user_role = params[:role]
+
+  @storage.assign_user_role(user_role, user_id)
+  user_name = @storage.get_user_name(user_id)
+
+  session[:success] = "You successfully assigned the role of '#{prettify_user_role(user_role)}' to #{user_name} "
+  redirect "/users"
 end
 
 # -------------PROJECTS------------------------------------------------------- #
@@ -520,7 +535,7 @@ post "/projects/:id/users" do
     @storage.unassign_all_users_from_project(project_id)
 
     session[:success] = "There are no users assigned to this project."
-    redirect "/projects/#{project_id}"
+    redirect "/projects/#{project_id}/users"
   else
     new_assigned_users = params[:assigned_users].map do |user|
       id, role = user.split(ID_ROLE_DELIMITER)
@@ -550,7 +565,7 @@ post "/projects/:id/users" do
     end
 
     session[:success] = "You have successfully made new user assignments."
-    redirect "/projects/#{project_id}"
+    redirect "/projects/#{project_id}/users"
   end
 end
 
