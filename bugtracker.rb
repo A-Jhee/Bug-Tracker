@@ -491,17 +491,25 @@ end
 get "/projects/:id/users" do
   @project = @storage.get_project(params[:id])
 
-  assigned_users = current_assigned_users(params[:id])
-  assigned_user_ids = user_id_array(assigned_users)
+  current_assigned_users = current_assigned_users(params[:id])
+  assigned_user_ids = user_id_array(current_assigned_users)
+
+  assigned_user_names = @storage.get_assigned_users(@project_id)
+  @project_manager = "Not Assigned"
+  assigned_user_names.each { |user| @project_manager = user["name"] if user["role"] == "project_manager" }
   
-  @users = @storage.all_users.map do |user|
+  users = @storage.all_users.map do |user|
     if assigned_user_ids.include?(user["id"])
       user["assigned?"] = true
     end
     user
   end
 
-  erb :assign_users, layout: :layout
+  @pms = users.select { |user| user["role"] == "project_manager" }
+  @devs = users.select { |user| user["role"] == "developer" }
+  @qas = users.select { |user| user["role"] == "quality_assurance" }
+
+  erb :assign_users, layout: false
 end
 
 # POST USER ASSIGNMENTS
