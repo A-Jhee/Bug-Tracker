@@ -103,6 +103,21 @@ class DatabasePersistence
     result.values.first.first
   end
 
+  def update_user_info(full_name, email, user_id)
+    sql = <<~SQL
+      UPDATE users
+         SET name = $1,
+             email = $2
+       WHERE id = $3;
+    SQL
+    query(sql, full_name, email, user_id)
+  end
+
+  def update_password(new_pass, id)
+    sql = "UPDATE user_logins SET password=$1 WHERE id=$2;"
+    query(sql, new_pass, id)
+  end
+
   def all_developers
     sql = "SELECT * FROM users WHERE role='developer';"
     query(sql)
@@ -165,7 +180,7 @@ class DatabasePersistence
   end
 
   def users_without_roles
-    sql = "SELECT * FROM users WHERE role = 'Unassigned';"
+    sql = "SELECT * FROM users WHERE (role = 'Unassigned') AND (id > 0);"
     query(sql)
   end
 

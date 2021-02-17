@@ -11,10 +11,17 @@ require "date"
 require_relative "database_persistence"
 
 ID_ROLE_DELIMITER = "!"
-DEMO_LOGINS = [{id: 1, role: "admin", name: "Admin, Demo"},
-              {id: 2, role: "project_manager", name: "Project Manager, Demo"},
-              {id: 3, role: "developer", name: "Developer, Demo"},
-              {id: 4, role: "quality_assurance", name: "Quality Assurance, Demo"}]
+DEMO_LOGINS = [{id: 1, role: "admin", name: "Admin, Demo", login: "admin"},
+              {id: 2, role: "project_manager", name: "Project Manager, Demo", login: "pm"},
+              {id: 3, role: "developer", name: "Developer, Demo", login: "dev1"},
+              {id: 4, role: "quality_assurance", name: "Quality Assurance, Demo", login:"qa"}]
+PSQL_ROLE_LOGINS =
+  {
+    "admin" => ENV["DB_ADMIN_PASSWORD"],
+    "project_manager" => ENV["DB_PM_PASSWORD"],
+    "developer" => ENV["DB_DEV_PASSWORD"],
+    "quality_assurance" => ENV["DB_QA_PASSWORD"]
+  }
 
 configure do
   enable :sessions
@@ -64,6 +71,7 @@ helpers do
         session[:user_id] = login[:id]
         session[:user_name] = login[:name]
         session[:user_role] = login[:role]
+        session[:user_login] = login[:login]
       end
     end
   end
@@ -121,6 +129,27 @@ helpers do
 
   def ticket_property_name_conversion
     DatabasePersistence::TICKET_PROPERTY_NAME_CONVERSION
+  end
+
+  def array_for_javascript(arr)
+    "['#{arr.join('\',\'')}']"
+  end
+
+  def last_14_days
+    result = [Date.today - 13]
+    13.times { |_| result << result[-1] + 1 }
+    result
+  end
+
+  def x_axis_dates
+    last_14_days.map do |date|
+      iso_hash = Date._iso8601(date.iso8601)
+      "#{Date::ABBR_MONTHNAMES[iso_hash[:mon]]} %02d" % [iso_hash[:mday]]
+    end
+  end
+
+  def last_14_iso_dates
+    last_14_days.map{ |date| date.iso8601 }
   end
 
   def css_classify(ticket_status)
@@ -268,19 +297,12 @@ helpers do
   end
 end
 
-PSQL_ROLE_LOGINS =
-  {
-    "admin" => ENV["DB_ADMIN_PASSWORD"],
-    "project_manager" => ENV["DB_PM_PASSWORD"],
-    "developer" => ENV["DB_DEV_PASSWORD"],
-    "quality_assurance" => ENV["DB_QA_PASSWORD"]
-  }
-
 before do
   if ENV["RACK_ENV"] == "test"
     session[:user_id] = "1"
     session[:user_name] = "DEMO_Admin"
     session[:user_role] = "admin"
+    session[:user_login] = "admin"
     @storage = DatabasePersistence.new("bugtrack_test", 'SFone', '')
   elsif logged_in?
     @storage = DatabasePersistence.new("bugtrack", session[:user_role], PSQL_ROLE_LOGINS[session[:user_role]])
@@ -299,27 +321,6 @@ end
 
 get "/home" do
   "Landing Page of Gecko Bug Tracker"
-end
-
-def array_for_javascript(arr)
-  "['#{arr.join('\',\'')}']"
-end
-
-def last_14_days
-  result = [Date.today - 13]
-  13.times { |_| result << result[-1] + 1 }
-  result
-end
-
-def x_axis_dates
-  last_14_days.map do |date|
-    iso_hash = Date._iso8601(date.iso8601)
-    "#{Date::ABBR_MONTHNAMES[iso_hash[:mon]]} %02d" % [iso_hash[:mday]]
-  end
-end
-
-def last_14_iso_dates
-  last_14_days.map{ |date| date.iso8601 }
 end
 
 get "/dashboard" do
@@ -388,6 +389,7 @@ post "/register" do
     session[:user_id] = user_id
     session[:user_name] = full_name
     session[:user_role] = "quality_assurance"
+    session[:user_login] = username
 
     session[:success] = "You are now logged in to your new account, #{full_name}."
     redirect "/dashboard"
@@ -422,6 +424,7 @@ post "/login" do
     session[:user_id] = user["id"]
     session[:user_name] = user["name"]
     session[:user_role] = user["role"]
+    session[:user_login] = username
 
     session[:success] =
       "You are now logged in as #{prettify_user_role(session[:user_role])}, #{session[:user_name]}."
@@ -448,14 +451,56 @@ end
 
 # USER PROFILE
 get "/profile" do
-  "Page for user profile"
+  @user = @storage.user(session[:user_id])
+  @first_name = @user["name"].split(" ")[0]
+  # @last_name = @user["name"].split(" ")[1]
+  @last_name = "Hamilton"
+  erb :profile, layout: false
+end
+
+post "/profile/info_update" do
+  full_name = "#{params[:first_name]} #{params[:last_name]}"
+  email = params[:email]
+  user_id = params[:user_id]
+
+  @storage.update_user_info(full_name, email, user_id)
+
+  session[:success] = "You successfully updated your information."
+  redirect "/profile"
+end
+
+post "/profile/password_update" do
+  old_pass = params[:pass_current]
+  new_pass = encrypt(params[:pass_new])
+  login = @storage.correct_username?(session[:user_login])
+
+  if correct_password?(old_pass, login["password"])
+    error = nil
+  else
+    error = "Current password was incorrect."
+  end
+
+  if error
+    session[:error] = error
+    redirect "/profile"
+  else
+    @storage.update_password(new_pass, login["id"])
+
+    session[:success] = "You successfully updated your password."
+    redirect "/profile"
+  end
+  
+  
 end
 
 # MANAGE USERS
 get "/users" do
   @users = @storage.all_users.reject { |user| user["id"] == "0" }
-
   @roles = DatabasePersistence::USER_ROLE_CONVERSION.keys
+
+  if params[:role] == "unassigned"
+    @users = @storage.users_without_roles
+  end
 
   erb :assign_roles, layout: false
 end

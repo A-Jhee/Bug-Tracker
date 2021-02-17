@@ -16,43 +16,23 @@
     <nav class="navbar navbar-expand navbar-dark mai-top-header">
       <div class="container"><a class="navbar-brand" href="/dashboard"></a>
         <ul class="nav navbar-nav mai-top-nav"></ul>
-        <ul class="navbar-nav float-lg-right mai-icons-nav">
-
-          <!-- notification -->
-          <li class="dropdown nav-item mai-notifications"><a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" role="button" aria-expanded="false"><span class="icon s7-bell"></span><span class="indicator"></span></a>
-            <ul class="dropdown-menu">
-              <li>
-                <div class="title">Notifications</div>
-                <div class="mai-scroller-notifications">
-                  <div class="content">
-                    <ul>
-                      <li><a href="#">
-                          <div class="icon"><span class="s7-check"></span></div>
-                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
-                      <li><a href="#">
-                          <div class="icon"><span class="s7-add-user"></span></div>
-                          <div class="content"><span class="desc">You have a new fiend request pending from <strong>John Doe</strong>.</span><span class="date">2 days ago</span></div></a></li>
-                      <li><a href="#">
-                          <div class="icon"><span class="s7-graph1"></span></div>
-                          <div class="content"><span class="desc">Your site visits have increased <strong>15.5%</strong> more since the last week.</span><span class="date">2 hours ago</span></div></a></li>
-                      <li><a href="#">
-                          <div class="icon"><span class="s7-check"></span></div>
-                          <div class="content"><span class="desc">This is a new message for my dear friend <strong>Rob</strong>.</span><span class="date">10 minutes ago</span></div></a></li>
-                    </ul>
-                  </div>
-                </div>
-                <div class="footer"><a href="#">View all notifications</a></div>
-              </li>
-            </ul>
-          </li>
-        </ul>
+        <ul class="navbar-nav float-lg-right mai-icons-nav"></ul>
 
         <ul class="nav navbar-nav float-lg-right mai-user-nav">
           <li class="dropdown nav-item">
             <a class="dropdown-toggle nav-link" href="#" data-toggle="dropdown" role="button" aria-expanded="false">
-              <span id="profile_avatar" class="icon s7-user"></span>
-              <span class="user-name"><%= session[:user_name] %></span>
-              <span class="angle-down s7-angle-down"></span>
+              <span id="profile_avatar" class="icon s7-user profile_avatar"></span>
+              <span id="profile_name">
+                <dl class="mb-0">
+                  <dt>
+                    <%= session[:user_name] %>
+                  </dt>
+                  <dd class="mb-0">
+                    <%= prettify_user_role(session[:user_role]) %>
+                  </dd>
+                </dl>
+              </span>
+              <span id="profile_arrow" class="angle-down s7-angle-down"></span>
             </a>
             <div class="dropdown-menu" role="menu">
               <a class="dropdown-item" href="/profile"><span id="profile_id" class="icon s7-id"></span>Profile</a>
@@ -90,7 +70,7 @@
                     </a>
                   </li>
 
-                  <li class="nav-item parent open">
+                  <li class="nav-item parent">
                     <a class="nav-link" href="/tickets" role="button" aria-expanded="false">
                       <span class="icon s7-ticket"></span>
                       <span>Tickets</span>
@@ -102,7 +82,7 @@
                   <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
                   <!--  -->
                   <!--  -->
-                  <li class="nav-item parent">
+                  <li class="nav-item parent open">
                     <a class="nav-link" href="#" role="button" aria-expanded="false">
                       <span class="icon s7-users"></span>
                       <span>Users</span>

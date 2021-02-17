@@ -14,7 +14,7 @@ Parsley.addMessages('en', {
   },
   notblank:       "This value should not be blank.",
   required:       "This value is required.",
-  pattern:        "This value seems to be invalid.",
+  pattern:        "Password must be 8 to 16 characters containing at least 1 lowercase letter, 1 uppercase letter, and 1 numeric character.",
   min:            "This value should be greater than or equal to %s.",
   max:            "This value should be lower than or equal to %s.",
   range:          "This value should be between %s and %s.",
