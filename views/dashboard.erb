@@ -103,6 +103,14 @@
 
         <div class="main-content container">
 
+          <% if session[:error] %>
+            <div class="alert alert-theme alert-danger alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-attention"></span></div>
+              <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+            </div>
+          <% end %>
+
           <% if session[:success] %>
             <div class="alert alert-theme alert-info alert-dismissible" role="alert">
               <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>

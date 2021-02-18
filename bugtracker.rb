@@ -73,8 +73,41 @@ helpers do
     end
   end
 
-  def logged_in?
-    session[:user_id] ? true : false
+  def user_authorized?
+    session[:user_id] && session[:user_name] && session[:user_role] && session[:user_login]
+  end
+
+  def pm_authorized?
+    user_authorized? && (session[:user_role] == "pm" || session[:user_role] == "admin")
+  end
+
+  def admin_authorized?
+    user_authorized? && session[:user_role] == "admin"
+  end
+
+  def require_signed_in_user
+    unless user_authorized?
+      session[:error] = "You must be logged in to do that"
+      redirect "/login"
+    end
+  end
+
+  def required_signed_in_pm
+    require_signed_in_user
+
+    unless pm_authorized?
+      session[:error] = "You are not authorized for that action"
+      redirect "/dashboard"
+    end
+  end
+
+  def required_signed_in_admin
+    require_signed_in_user
+
+    unless admin_authorized?
+      session[:error] = "You are not authorized for that action"
+      redirect "/dashboard"
+    end
   end
 
   def error_for_project_name(project_name)
@@ -380,7 +413,7 @@ before do
     session[:user_role] = "admin"
     session[:user_login] = "admin"
     @storage = DatabasePersistence.new("bugtrack_test", 'SFone', '')
-  elsif logged_in?
+  elsif user_authorized?
     @storage = DatabasePersistence.new("bugtrack", session[:user_role], PSQL_ROLE_LOGINS[session[:user_role]])
   else
     @storage = DatabasePersistence.new("bugtrack", ENV["DB_AUTH_USERNAME"], ENV["DB_AUTH_PASSWORD"])
@@ -400,6 +433,8 @@ get "/home" do
 end
 
 get "/dashboard" do
+  require_signed_in_user
+
   @x_axis_dates = array_for_javascript(x_axis_dates)
 
   if session[:user_role] == "admin"
@@ -524,6 +559,8 @@ end
 
 # USER PROFILE
 get "/profile" do
+  require_signed_in_user
+
   @user = @storage.user(session[:user_id])
   @first_name = @user["name"].split(" ")[0..-2].join(" ")
   @last_name = @user["name"].split(" ")[-1]
@@ -531,6 +568,8 @@ get "/profile" do
 end
 
 post "/profile/info_update" do
+  require_signed_in_user
+
   full_name = "#{params[:first_name]} #{params[:last_name]}"
   email = params[:email]
   user_id = params[:user_id]
@@ -544,6 +583,8 @@ post "/profile/info_update" do
 end
 
 post "/profile/password_update" do
+  require_signed_in_user
+
   old_pass = params[:pass_current]
   new_pass = encrypt(params[:pass_new])
   login = @storage.correct_username?(session[:user_login])
@@ -565,15 +606,20 @@ post "/profile/password_update" do
   end
 end
 
-# MANAGE USERS
+# MANAGE USER ROLES
 get "/users" do
+  required_signed_in_admin
+
   @users = @storage.all_users.reject { |user| user["id"] == "0" }
-  @roles = DatabasePersistence::USER_ROLE_CONVERSION.keys
+  @roles = DatabasePersistence::USER_ROLE_CONVERSION.keys.reject { |k,v| k == "Unassigned" }
 
   erb :assign_roles, layout: false
 end
 
+# MANAGE/UPDATE USER ROLES
 post "/users" do
+  required_signed_in_admin
+
   user_id = params[:user_id]
   user_role = params[:role]
 
@@ -593,17 +639,22 @@ end
 
 # VIEW ALL USER'S ASSIGNED PROJECTS
 get "/projects" do
+  require_signed_in_user
+
   if session[:user_role] == "admin"
     @projects = @storage.all_projects
   else
     assigned_projects = assigned_project_ids_for_user(session[:user_id])
-    @projects = table_ready_projects(assigned_projects)
+    @projects = table_ready_projects(assigned_projects).sort { |a, b| a["name"].upcase <=> b["name"].upcase }
   end
+
   erb :projects, layout: false
 end
 
 # POST A NEW PROJECT
 post "/projects/new" do
+  required_signed_in_admin
+
   @name = params[:name].strip
   @description = params[:description].strip
 
@@ -623,6 +674,8 @@ end
 
 # VIEW ASSIGN USER TO PROJECT FORM
 get "/projects/:id/users" do
+  required_signed_in_pm
+
   @project = @storage.get_project(params[:id])
 
   current_assigned_users = current_assigned_users(params[:id])
@@ -648,6 +701,8 @@ end
 
 # POST USER ASSIGNMENTS
 post "/projects/:id/users" do
+  required_signed_in_pm
+
   project_id = params[:id]
 
   if params[:assigned_users].nil?
@@ -691,6 +746,8 @@ end
 # VIEW PROJECT DETAILS
 # includes: name, description, assigned users, and tickets for that project
 get "/projects/:id" do
+  require_signed_in_user
+
   @project_id = params[:id]
   @project = @storage.get_project(@project_id)
   @assigned_users = @storage.get_assigned_users(@project_id)
@@ -725,6 +782,8 @@ end
 # POST PROJECT EDITS
 # edits name and/or description
 post "/projects/:id" do
+  required_signed_in_pm
+
   @name = params[:name].strip
   @description = params[:description].strip
   project_id = params[:id]
@@ -755,6 +814,8 @@ end
 # VIEW ALL TICKETS FOR USER'S ASSIGNED PROJECTS
 # column fields (Title, Project Name, Dev. Assigned, Priority, Type, Created On)
 get "/tickets" do
+  require_signed_in_user
+
   # keep these values in case I wish to re-implement ticket creation
   # from the project view -->
   @splat_id = params[:splat].first unless params[:splat].nil?
@@ -802,6 +863,8 @@ end
 # If making a post request w/o route like so: "/tickets/new/", then ticket
 # creation view has a select drop down menu for all projects available.
 post "/tickets/new/*" do
+  require_signed_in_user
+
   title = params[:title].strip # ticket title REQ
   description = params[:description].strip # ticket description DEFAULT n/a REQ
   @type = params[:type] # ticket type REQ
@@ -833,6 +896,8 @@ end
 # VIEW TICKET DETAILS
 # includes: ticket properties, comments, attachments, & update history.
 get "/tickets/:id" do
+  require_signed_in_user
+
   ticket_id = params[:id]
 
   @ticket, @comments, @attachments, @histories = load_ticket_details(ticket_id)
@@ -851,6 +916,8 @@ end
 
 # POST TICKET EDITS
 post "/tickets/:id" do
+  require_signed_in_user
+
   title = params[:title].strip
   description = params[:description].strip
   ticket_id = params[:id]
@@ -900,6 +967,8 @@ end
 
 # POST TICKET COMMENT
 post "/tickets/:id/comment" do
+  require_signed_in_user
+
   comment = params[:comment].strip
   ticket_id = params[:id]
 
@@ -910,6 +979,8 @@ end
 
 # UPLOAD A FILE AS ATTACHMENT TO A TICKET
 post "/upload/:id" do
+  require_signed_in_user
+
   if params[:file] && (tmpfile = params[:file][:tempfile]) && (object_key = params[:file][:filename])
     if s3_object_uploaded?(object_key, File.read(tmpfile))
       @storage.create_attachment(object_key, session[:user_id], params[:notes], params[:id])
@@ -923,6 +994,8 @@ end
 
 # DOWNLOAD AND RETURN ATTACHMENT FILE TO BE VIEWED ON BROWSER
 get "/tickets/:id/:filename" do
+  require_signed_in_user
+
   object_key = params[:filename]
 
   response = s3_object_download(object_key)
