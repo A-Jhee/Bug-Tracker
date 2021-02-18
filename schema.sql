@@ -220,11 +220,15 @@ GRANT SELECT, INSERT, DELETE ON TABLE projects_users_assignments TO p_m;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE tickets TO p_m;
 
-GRANT SELECT, INSERT ON TABLE ticket_comments, ticket_attachments TO p_m;
+GRANT SELECT, INSERT ON TABLE ticket_comments,
+                              ticket_update_history,
+                              ticket_attachments TO p_m;
 
-GRANT SELECT, UPDATE ON TABLE projects TO p_m;
+GRANT SELECT, UPDATE ON TABLE users,
+                              user_logins,
+                              projects TO p_m;
 
-GRANT SELECT ON TABLE ticket_update_history, users TO p_m;
+GRANT SELECT ON TABLE users TO p_m;
 
 GRANT USAGE ON 
       SEQUENCE users_id_seq,
@@ -260,12 +264,15 @@ GRANT USAGE
 
 GRANT SELECT, INSERT, UPDATE ON TABLE tickets TO dev;
 
-GRANT SELECT, INSERT ON TABLE ticket_comments, ticket_attachments TO dev;
+GRANT SELECT, INSERT ON TABLE ticket_comments,
+                              ticket_update_history,
+                              ticket_attachments TO dev;
+
+GRANT SELECT, UPDATE ON TABLE users,
+                              user_logins TO dev;
 
 GRANT SELECT ON TABLE projects,
-                      projects_users_assignments,
-                      ticket_update_history,
-                      users
+                      projects_users_assignments
                    TO dev;
 
 GRANT USAGE ON 
@@ -300,12 +307,15 @@ GRANT USAGE
 
 GRANT SELECT, INSERT, UPDATE ON TABLE tickets TO q_a;
 
-GRANT SELECT, INSERT ON TABLE ticket_comments, ticket_attachments TO q_a;
+GRANT SELECT, INSERT ON TABLE ticket_comments, 
+                              ticket_update_history, 
+                              ticket_attachments TO q_a;
+
+GRANT SELECT, UPDATE ON TABLE users,
+                              user_logins TO q_a;                             
 
 GRANT SELECT ON TABLE projects,
-                      projects_users_assignments,
-                      ticket_update_history,
-                      users
+                      projects_users_assignments
                    TO q_a;
 
 GRANT USAGE ON 
@@ -323,10 +333,7 @@ GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
 -- STATEMENT CRAFTING TABLE ------------------------------------------------------------
-          SELECT date(tickets.created_on), count(tickets.id)
-            FROM tickets
-            JOIN projects ON projects.id = tickets.project_id
-           WHERE updated_on::date = $1 AND projects.id = $2
-             AND status = 'Resolved'
-        GROUP BY date;
+GRANT SELECT ON TABLE users, user_logins TO p_m;
+GRANT SELECT ON TABLE users, user_logins TO dev;
+GRANT SELECT ON TABLE users, user_logins TO q_a;
 

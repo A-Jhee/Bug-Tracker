@@ -85,17 +85,14 @@
                     </ul>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT ONLY FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
-                  <li class="nav-item parent">
-                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                      <span class="icon s7-users"></span>
-                      <span>Users</span>
-                    </a>
-                  </li>
+                  <% if session[:user_role] == "admin" %>
+                    <li class="nav-item parent">
+                      <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                        <span class="icon s7-users"></span>
+                        <span>Users</span>
+                      </a>
+                    </li>
+                  <% end %>
 
                 </ul>
               </div>
@@ -204,6 +201,14 @@
           </div>
         </div>
 
+        <% if session[:success] %>
+          <div class="alert alert-theme alert-info alert-dismissible" role="alert">
+            <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+            <div class="icon"><span class="s7-check"></span></div>
+            <div class="message"><strong>Success!</strong> <%= session.delete(:success) %></div>
+          </div>
+        <% end %>
+
         <div class="row">
           <div class="col-sm-12">
             <div class="tab-container mb-5">
@@ -241,7 +246,7 @@
                                     <tr>
                                       <td><%= ticket["id"] %></td>
                                       <td><%= ticket["project_name"] %></td>
-                                      <td><%= ticket["title"] %></td>
+                                      <td class="font-weight-bold"><%= ticket["title"] %></td>
                                       <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket["status"] %></td>
                                       <td><%= ticket["type"] %></td>
                                       <td>
@@ -291,7 +296,7 @@
                                     <tr>
                                       <td><%= ticket["id"] %></td>
                                       <td><%= ticket["project_name"] %></td>
-                                      <td><%= ticket["title"] %></td>
+                                      <td class="font-weight-bold"><%= ticket["title"] %></td>
                                       <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket["status"] %></td>
                                       <td><%= ticket["type"] %></td>
                                       <td>
@@ -341,7 +346,7 @@
                                     <tr>
                                       <td><%= ticket["id"] %></td>
                                       <td><%= ticket["project_name"] %></td>
-                                      <td><%= ticket["title"] %></td>
+                                      <td class="font-weight-bold"><%= ticket["title"] %></td>
                                       <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket["status"] %></td>
                                       <td><%= ticket["type"] %></td>
                                       <td>

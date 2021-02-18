@@ -85,17 +85,14 @@
                     </a>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT ONLY FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
-                  <li class="nav-item parent">
-                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                      <span class="icon s7-users"></span>
-                      <span>Users</span>
-                    </a>
-                  </li>
+                  <% if session[:user_role] == "admin" %>
+                    <li class="nav-item parent">
+                      <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                        <span class="icon s7-users"></span>
+                        <span>Users</span>
+                      </a>
+                    </li>
+                  <% end %>
 
                 </ul>
               </div>
@@ -107,40 +104,43 @@
         <div class="row pb-3 pl-3">
           <div class="col-md-12 d-flex align-items-center justify-content-between">
             <h2>Projects Overview</h2>
-            <div class="d-flex justify-content-end ticket-option-btn">
-              <button class="btn btn-space btn-primary md-trigger" data-modal="create-new-project">
-                <i class="icon icon-left s7-plus mr-2"></i>Create New Project
-              </button>
-            </div>
-            <div class="modal-container modal-effect-8" id="create-new-project">
-              <div class="modal-content">
-                <div class="modal-header modal-header-colored modal-header-colored-primary">
-                  <h4 class="modal-title">Create New Project</h4>
-                  <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
-                </div>
-                <div class="modal-body">
 
-                  <form method="post" action="/projects/new" data-parsley-validate="" novalidate="">
-                    <div class="form-group">
-                      <label for="title">Project Name</label>
-                      <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" placeholder="Enter a project name" data-parsley-uniqueProjectName="" autocomplete="off"/>
-                    </div>
-                    <div class="form-group">
-                      <label for="desc">Description</label>
-                      <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" placeholder="Write a description" autocomplete="off" rows="5"></textarea>
-                    </div>
-                    <div class="row d-flex justify-content-end">
-                      <div class="col-lg-6">
-                        <p class="text-right">
-                          <button class="btn btn-space btn-primary" type="submit">Create Project</button>
-                        </p>
+            <% if session[:user_role] == "admin" %>
+              <div class="d-flex justify-content-end ticket-option-btn">
+                <button class="btn btn-space btn-primary md-trigger" data-modal="create-new-project">
+                  <i class="icon icon-left s7-plus mr-2"></i>Create New Project
+                </button>
+              </div>
+              <div class="modal-container modal-effect-8" id="create-new-project">
+                <div class="modal-content">
+                  <div class="modal-header modal-header-colored modal-header-colored-primary">
+                    <h4 class="modal-title">Create New Project</h4>
+                    <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
+                  </div>
+                  <div class="modal-body">
+
+                    <form method="post" action="/projects/new" data-parsley-validate="" novalidate="">
+                      <div class="form-group">
+                        <label for="title">Project Name</label>
+                        <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" placeholder="Enter a project name" data-parsley-uniqueProjectName="" autocomplete="off"/>
                       </div>
-                    </div>
-                  </form>
+                      <div class="form-group">
+                        <label for="desc">Description</label>
+                        <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" placeholder="Write a description" autocomplete="off" rows="5"></textarea>
+                      </div>
+                      <div class="row d-flex justify-content-end">
+                        <div class="col-lg-6">
+                          <p class="text-right">
+                            <button class="btn btn-space btn-primary" type="submit">Create Project</button>
+                          </p>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="modal-overlay"></div>
+              <div class="modal-overlay"></div>
+            <% end %>
           </div>
         </div>
 
@@ -149,6 +149,14 @@
             <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
             <div class="icon"><span class="s7-attention"></span></div>
             <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+          </div>
+        <% end %>
+
+        <% if session[:success] %>
+          <div class="alert alert-theme alert-info alert-dismissible" role="alert">
+            <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+            <div class="icon"><span class="s7-check"></span></div>
+            <div class="message"><strong>Success!</strong> <%= session.delete(:success) %></div>
           </div>
         <% end %>
 

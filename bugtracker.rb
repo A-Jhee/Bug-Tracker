@@ -28,6 +28,7 @@ configure do
   set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(64) }
   set :erb, :escape_html => true
   set :bucket, ENV["AWS_BUCKET"]
+  set :show_exceptions, false
 end
 
 configure(:development) do
@@ -51,12 +52,8 @@ helpers do
     BCrypt::Password.new(hashed_password) == password
   end
 
-  def password_match_valid?(password, password_confirm)
-    password == password_confirm ? "is-valid" : "is-invalid"
-  end
-
   def unique_username_valid?(username)
-    @storage.unique_username?(username) ? "is-valid" : "is-invalid"
+    @storage.unique_username?(username)
   end
 
   def unique_email_valid?(email)
@@ -80,27 +77,12 @@ helpers do
     session[:user_id] ? true : false
   end
 
-  def error_for_ticket_title(title)
-    error_msg = "Ticket title must be between 1 and 100 characters."
-    return error_msg unless (1..100).cover? title.size
-  end
-
   def error_for_project_name(project_name)
     if !(1..100).cover? project_name.size
       "Project name must be between 1 and 100 characters."
     elsif @storage.all_projects.any? { |project| project["name"] == project_name }
       "That project name is already in use. A project name must be unique."
     end
-  end
-
-  def error_for_description(description)
-    error_msg = "Description must be between 1 and 300 characters."
-    return error_msg unless (1..300).cover? description.size
-  end
-
-  def error_for_comment(comment)
-    error_msg = "Comment must be between 1 and 300 characters."
-    return error_msg unless (1..300).cover? comment.size
   end
 
   def prettify_property_name(property_name)
@@ -260,6 +242,93 @@ helpers do
     end
   end
 
+  def all_open_ticket_count
+    result = last_14_iso_dates.map do |iso_date|
+      if @storage.get_open_ticket_count(iso_date).values.first
+        @storage.get_open_ticket_count(iso_date).values.first[1].to_i
+      else
+        0
+      end
+    end
+    array_for_javascript(result)
+  end
+
+  def all_resolved_ticket_count
+    result = last_14_iso_dates.map do |iso_date|
+      if @storage.get_resolved_ticket_count(iso_date).values.first
+        @storage.get_resolved_ticket_count(iso_date).values.first[1].to_i
+      else
+        0
+      end
+    end
+    array_for_javascript(result)
+  end
+
+  def open_ticket_count_for_projects(project_ids)
+    result = last_14_iso_dates.map do |iso_date|
+      total = 0
+      project_ids.each do |project_id|
+        ticket_count = @storage.get_open_ticket_count_for_project(iso_date, project_id)
+        if ticket_count.values.first
+          total += ticket_count.values.first[1].to_i
+        end
+      end
+      total
+    end
+    array_for_javascript(result)
+  end
+
+  def resolved_ticket_count_for_projects(project_ids)
+    result = last_14_iso_dates.map do |iso_date|
+      total = 0
+      project_ids.each do |project_id|
+        ticket_count = @storage.get_resolved_ticket_count_for_project(iso_date, project_id)
+        if ticket_count.values.first
+          total += ticket_count.values.first[1].to_i
+        end
+      end
+      total
+    end
+    array_for_javascript(result)
+  end
+
+  def last_3days_tickets_for_projects(project_ids)
+    result = []
+    project_ids.each do |project_id|
+      query_results = @storage.last_3days_tickets_for_project(project_id)
+      result += query_results.map { |query_result| query_result }
+    end
+    result
+  end
+
+  def all_tickets_for_projects(project_ids)
+    result =[]
+    project_ids.each do |project_id|
+      query_results = @storage.table_ready_tickets_for_project(project_id)
+      result += query_results.map { |query_result| query_result }
+    end
+    result
+  end
+
+  def assigned_project_ids_for_user(user_id)
+    @storage.all_assigned_projects(session[:user_id]).map { |result| result["project_id"] }
+  end
+
+  def projects(project_ids)
+    project_ids.map do |project_id|
+      @storage.get_project(project_id)
+    end
+  end
+
+  def table_ready_projects(project_ids)
+    result =[]
+    project_ids.each do |project_id|
+      query_results = @storage.table_ready_projects_for(project_id)
+      result += query_results.map { |query_result| query_result }
+    end
+    result
+  end
+
   # What: Uploads the file content to S3 with the specified object_key.
   #       Returns boolean true or false.
   def s3_object_uploaded?(object_key, file_content)
@@ -297,6 +366,13 @@ helpers do
   end
 end
 
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+
 before do
   if ENV["RACK_ENV"] == "test"
     session[:user_id] = "1"
@@ -326,28 +402,30 @@ end
 get "/dashboard" do
   @x_axis_dates = array_for_javascript(x_axis_dates)
 
-  @open_ticket_count = last_14_iso_dates.map do |iso_date|
-    if @storage.get_open_ticket_count(iso_date).values.first
-      @storage.get_open_ticket_count(iso_date).values.first[1].to_i
-    else
-      0
-    end
+  if session[:user_role] == "admin"
+    @open_ticket_count = all_open_ticket_count
+    @resolved_ticket_count = all_resolved_ticket_count
+
+    @last_3days_tickets = @storage.all_last_3days_tickets
+    @tickets_without_devs = @storage.all_tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
+  elsif session[:user_role] == "project_manager"
+    assigned_projects = assigned_project_ids_for_user(session[:user_id])
+
+    @open_ticket_count = open_ticket_count_for_projects(assigned_projects)
+    @resolved_ticket_count = resolved_ticket_count_for_projects(assigned_projects)
+
+    @last_3days_tickets  = last_3days_tickets_for_projects(assigned_projects)
+
+    all_tickets_for_project = all_tickets_for_projects(assigned_projects)
+    @tickets_without_devs = all_tickets_for_project.select { |ticket| ticket["dev_name"] == "Unassigned" }
+  else
+    assigned_projects = assigned_project_ids_for_user(session[:user_id])
+
+    @open_ticket_count = open_ticket_count_for_projects(assigned_projects)
+    @resolved_ticket_count = resolved_ticket_count_for_projects(assigned_projects)
+
+    @last_3days_tickets  = last_3days_tickets_for_projects(assigned_projects)
   end
-  @resolved_ticket_count = last_14_iso_dates.map do |iso_date|
-    if @storage.get_resolved_ticket_count(iso_date).values.first
-      @storage.get_resolved_ticket_count(iso_date).values.first[1].to_i
-    else
-      0
-    end
-  end
-
-  @open_ticket_count = array_for_javascript(@open_ticket_count)
-  @resolved_ticket_count = array_for_javascript(@resolved_ticket_count)
-
-  @last_3days_tickets = @storage.last_3days_tickets_for_current_user(session[:user_role])
-
-  @users_without_roles = @storage.users_without_roles
-  @tickets_without_devs = @storage.all_tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
 
   erb :dashboard, layout: false
 end
@@ -361,7 +439,7 @@ end
 
 # VIEW USER REGISTRATION FORM
 get "/register" do
-  erb :register, layout: :register_layout
+  erb :register, layout: false
 end
 
 # POST NEW USER REGISTRATION
@@ -370,18 +448,14 @@ post "/register" do
   email = params[:email]
   username = params[:username]
   password = params[:password]
-  password_confirm = params[:password_confirm]
 
-  @username_valid_class_selector = unique_username_valid?(username)
-  @email_valid_class_selector = unique_email_valid?(email)
-  @password_confirm_valid_class_selector = password_match_valid?(password, password_confirm)
+  error = []
+  error << "That username is already taken" unless @storage.unique_username?(username)
+  error << "That email is already in use" unless @storage.unique_email?(email)
 
-  server_side_validations = [@username_valid_class_selector,
-                             @email_valid_class_selector,
-                             @password_confirm_valid_class_selector]
-
-  if server_side_validations.include?("is-invalid")
-    erb :register, layout: :register_layout
+  if error.size > 0
+    session[:error] = error
+    erb :register, layout: false
   else
     user_id = @storage.register_new_user(full_name, username, encrypt(password), email)
 
@@ -398,7 +472,10 @@ end
 
 # VIEW LOG IN FORM
 get "/login" do
-  erb :login, layout: :register_layout
+  if session[:user_name]
+    redirect "/logout"
+  end
+  erb :login, layout: false
 end
 
 # POST USER LOG IN
@@ -416,7 +493,7 @@ post "/login" do
 
   if error
     session[:error] = error
-    erb :login, layout: :register_layout
+    redirect "/login"
   else
     user = @storage.user(login["user_id"])
 
@@ -426,8 +503,6 @@ post "/login" do
     session[:user_role] = user["role"]
     session[:user_login] = username
 
-    session[:success] =
-      "You are now logged in as #{prettify_user_role(session[:user_role])}, #{session[:user_name]}."
     redirect "/dashboard"
   end
 end
@@ -437,24 +512,21 @@ post "/login/demo" do
   login_for_role(demo_role)
 
   session[:success] =
-      "You are now logged in as #{prettify_user_role(session[:user_role])}, #{session[:user_name]}."
+      "Welcome, #{session[:user_name]}."
   redirect "/dashboard"
 end
 
 # LOG OUT USER
 get "/logout" do
   session.clear
-
-  session[:success] = "You successfully logged out."
   redirect "/login"
 end
 
 # USER PROFILE
 get "/profile" do
   @user = @storage.user(session[:user_id])
-  @first_name = @user["name"].split(" ")[0]
-  # @last_name = @user["name"].split(" ")[1]
-  @last_name = "Hamilton"
+  @first_name = @user["name"].split(" ")[0..-2].join(" ")
+  @last_name = @user["name"].split(" ")[-1]
   erb :profile, layout: false
 end
 
@@ -464,6 +536,8 @@ post "/profile/info_update" do
   user_id = params[:user_id]
 
   @storage.update_user_info(full_name, email, user_id)
+
+  session[:user_name] = full_name
 
   session[:success] = "You successfully updated your information."
   redirect "/profile"
@@ -489,18 +563,12 @@ post "/profile/password_update" do
     session[:success] = "You successfully updated your password."
     redirect "/profile"
   end
-  
-  
 end
 
 # MANAGE USERS
 get "/users" do
   @users = @storage.all_users.reject { |user| user["id"] == "0" }
   @roles = DatabasePersistence::USER_ROLE_CONVERSION.keys
-
-  if params[:role] == "unassigned"
-    @users = @storage.users_without_roles
-  end
 
   erb :assign_roles, layout: false
 end
@@ -525,13 +593,19 @@ end
 
 # VIEW ALL USER'S ASSIGNED PROJECTS
 get "/projects" do
-  @projects = @storage.all_projects
+  if session[:user_role] == "admin"
+    @projects = @storage.all_projects
+  else
+    assigned_projects = assigned_project_ids_for_user(session[:user_id])
+    @projects = table_ready_projects(assigned_projects)
+  end
   erb :projects, layout: false
 end
 
 # POST A NEW PROJECT
 post "/projects/new" do
   @name = params[:name].strip
+  @description = params[:description].strip
 
   error = error_for_project_name(@name)
 
@@ -542,7 +616,7 @@ post "/projects/new" do
   else
     @storage.create_project(@name, @description)
 
-    session[:success] = "You have successfully submitted a new project."
+    session[:success] = "You have successfully created a new project."
     redirect "/projects"
   end
 end
@@ -614,12 +688,6 @@ post "/projects/:id/users" do
   end
 end
 
-# VIEW EDIT PROJECT FORM
-get "/projects/:id/edit" do
-  @project = @storage.get_project(params[:id])
-  erb :edit_project, layout: false
-end
-
 # VIEW PROJECT DETAILS
 # includes: name, description, assigned users, and tickets for that project
 get "/projects/:id" do
@@ -687,24 +755,38 @@ end
 # VIEW ALL TICKETS FOR USER'S ASSIGNED PROJECTS
 # column fields (Title, Project Name, Dev. Assigned, Priority, Type, Created On)
 get "/tickets" do
-  # FIXME: correct this route to show only the tickets from user's
-  #        assigned project
-  tickets = @storage.all_tickets
-
+  # keep these values in case I wish to re-implement ticket creation
+  # from the project view -->
   @splat_id = params[:splat].first unless params[:splat].nil?
+  @project_name = @storage.get_project_name(@splat_id) unless params[:splat].nil?
+  # <-- keep these values in case I wish to re-implement ticket creation
+  # from the project view
 
   @types = ticket_types
   @priorities = ticket_priorities
 
-  @projects = @storage.all_projects
-  @project_name = @storage.get_project_name(@splat_id) unless params[:splat].nil?
+  all_tickets = @storage.all_tickets
+  @submitted_tickets = all_tickets.select { |ticket| ticket["submitter_id"] == session[:user_id].to_s }
 
-  @unresolved_tickets = tickets.select { |ticket| ticket["status"] != "Resolved" }
-  @resolved_tickets = tickets.select { |ticket| ticket["status"] == "Resolved" }
-  @submitted_tickets = tickets.select { |ticket| ticket["submitter_id"] == session[:user_id].to_s }
+  if session[:user_role] == "admin"
+    @projects = @storage.all_projects
+    @unresolved_tickets = all_tickets.select { |ticket| ticket["status"] != "Resolved" }
+    @resolved_tickets = all_tickets.select { |ticket| ticket["status"] == "Resolved" }
+  else
+    assigned_projects = assigned_project_ids_for_user(session[:user_id])
+    all_tickets_for_project = all_tickets_for_projects(assigned_projects)
+
+    @projects = projects(assigned_projects)
+    @unresolved_tickets = all_tickets_for_project.select { |ticket| ticket["status"] != "Resolved" }
+    @resolved_tickets = all_tickets_for_project.select { |ticket| ticket["status"] == "Resolved" }
+  end
 
   if params[:dev] == "unassigned"
-    @unresolved_tickets = tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
+    if session[:user_role] == "admin"
+      @unresolved_tickets = all_tickets.select { |ticket| ticket["dev_name"] == "Unassigned" }
+    elsif session[:user_role] == "project_manager"
+      @unresolved_tickets = all_tickets_for_project.select { |ticket| ticket["dev_name"] == "Unassigned" }
+    end
     @resolved_tickets = []
     @submitted_tickets = []
   end
@@ -757,6 +839,7 @@ get "/tickets/:id" do
 
   @project_name, @developer_name, @submitter_name =
                                          load_names_for_ticket_details(@ticket)
+  @developer_id = @ticket["developer_id"]
 
   @developers = @storage.all_developers                                         
   @priorities = ticket_priorities
@@ -820,33 +903,9 @@ post "/tickets/:id/comment" do
   comment = params[:comment].strip
   ticket_id = params[:id]
 
-  @ticket, @comments, @attachments, @histories = load_ticket_details(ticket_id)
-
-  @project_name, @developer_name, @submitter_name =
-                                         load_names_for_ticket_details(@ticket)
-
-  error = error_for_comment(comment)
-
-  if error
-    session[:error] = error
-    erb :ticket, layout: :layout
-  else
-    @storage.create_comment(comment, session[:user_id], ticket_id)
-    redirect "/tickets/#{ticket_id}"
-  end
-end
-
-# DELETE A TICKET COMMMENT
-post "/tickets/:id/comment/:comment_id/destroy" do
-  @storage.delete_comment(params[:comment_id])
-
-  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
-    session[:success] = "The ticket comment has been deleted."
-    "/tickets/#{params[:id]}"
-  else # retained for testing purpose
-    session[:success] = "The ticket comment has been deleted."
-    redirect "/tickets/#{params[:id]}"
-  end
+  @storage.create_comment(comment, session[:user_id], ticket_id)
+  session[:success] = "You succesfully posted a comment"
+  redirect "/tickets/#{ticket_id}"
 end
 
 # UPLOAD A FILE AS ATTACHMENT TO A TICKET
@@ -862,8 +921,6 @@ post "/upload/:id" do
   redirect "/tickets/#{params[:id]}"
 end
 
-
-
 # DOWNLOAD AND RETURN ATTACHMENT FILE TO BE VIEWED ON BROWSER
 get "/tickets/:id/:filename" do
   object_key = params[:filename]
@@ -877,20 +934,6 @@ get "/tickets/:id/:filename" do
   end
 end
 
-# DELETE A TICKET
-post "/tickets/:id/destroy" do
-  ticket_id = params[:id]
-
-  @storage.delete_ticket(ticket_id)
-  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
-    session[:success] = "The ticket has been deleted."
-    "/tickets"
-  else  # retained for testing purpose
-    session[:success] = "The ticket has been deleted."
-    redirect "/tickets"
-  end
-end
-
 error 400..510 do
-  "I'm sorry. Cannot handle that request."
+  File.read(File.join('public', '404.html'))
 end

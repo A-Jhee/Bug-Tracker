@@ -179,14 +179,14 @@ class DatabasePersistence
     query(sql, project_id)
   end
 
-  def users_without_roles
-    sql = "SELECT * FROM users WHERE (role = 'Unassigned') AND (id > 0);"
-    query(sql)
-  end
-
   def assign_user_role(role, user_id)
     sql = "UPDATE users SET role=$1 WHERE id=$2;"
     query(sql, role, user_id)
+  end
+
+  def all_assigned_projects(user_id)
+    sql = "SELECT * FROM projects_users_assignments WHERE user_id = $1"
+    query(sql, user_id)
   end
 
   # -------------PROJECTS------------------------------------------------------- #
@@ -220,6 +220,25 @@ class DatabasePersistence
     query(sql)
   end
 
+  def table_ready_projects_for(project_id)
+    sql = <<~SQL
+           SELECT p.id,
+                  p.name,
+                  p.description,
+                  u.name AS project_manager,
+                  count(t.id) AS ticket_count
+             FROM projects AS p
+        LEFT JOIN projects_users_assignments AS pua ON (pua.project_id = p.id AND pua.role = 'project_manager')
+        LEFT JOIN users AS u ON (pua.user_id = u.id)
+        LEFT JOIN tickets AS t ON (t.project_id = p.id)
+            WHERE p.id = $1
+         GROUP BY p.id, u.name
+         ORDER BY UPPER(p.name) ASC;
+    SQL
+
+    query(sql, project_id)
+  end
+
   # What: returns just the project id of the given project name
   def get_project_id(project_name)
     sql = "SELECT id FROM projects WHERE name=$1"
@@ -243,9 +262,7 @@ class DatabasePersistence
   # What: returns PG::Result object containing all info of a project.
   def get_project(project_id)
     sql = "SELECT * FROM projects WHERE id=$1"
-    result = query(sql, project_id)
-
-    result.first
+    query(sql, project_id).first
   end
 
   def update_project(project_name, project_description, project_id)
@@ -303,35 +320,70 @@ class DatabasePersistence
     query(sql)
   end
 
-  def all_tickets_for_current_user(user)
+  def all_last_3days_tickets
+    sql = <<~SQL
+          SELECT t.id,
+                 p.name AS project_name,
+                 t.title,
+                 t.status,
+                 t.priority,
+                 t.type,
+                 u.name AS dev_name,
+                 t.created_on
+            FROM tickets  AS t
+       LEFT JOIN projects AS p ON (p.id = t.project_id)
+       LEFT JOIN users    AS u ON (t.developer_id = u.id)
+           WHERE created_on::date = $1
+              OR created_on::date = $2
+              OR created_on::date = $3;
+    SQL
+    today = Date.today
+    dates = [today, today-1, today-2].map { |date| date.iso8601 }
+    query(sql, dates[0], dates[1], dates[2])
   end
 
-  def last_3days_tickets_for_current_user(user)
-    if user == "admin"
-      sql = <<~SQL
-            SELECT t.id,
-                   p.name AS project_name,
-                   t.title,
-                   t.status,
-                   t.priority,
-                   t.type,
-                   u.name AS dev_name,
-                   t.created_on
-              FROM tickets  AS t
-         LEFT JOIN projects AS p ON (p.id = t.project_id)
-         LEFT JOIN users    AS u ON (t.developer_id = u.id)
-             WHERE created_on::date = $1
-                OR created_on::date = $2
-                OR created_on::date = $3;
-      SQL
-      today = Date.today
-      dates = [today, today-1, today-2].map { |date| date.iso8601 }
-      query(sql, dates[0], dates[1], dates[2])
-    # else
-    #   get all projects the user is assigned to
-    #   get all tickets from only certain projects
-    #   select tickets that are opened within last 3 days
-    end
+  def last_3days_tickets_for_project(project_id)
+    sql = <<~SQL
+          SELECT t.id,
+                 p.name AS project_name,
+                 t.title,
+                 t.status,
+                 t.priority,
+                 t.type,
+                 u.name AS dev_name,
+                 t.created_on,
+                 t.project_id
+            FROM tickets  AS t
+       LEFT JOIN projects AS p ON (p.id = t.project_id)
+       LEFT JOIN users    AS u ON (t.developer_id = u.id)
+           WHERE (created_on::date = $1
+              OR created_on::date = $2
+              OR created_on::date = $3) AND (project_id = $4);
+    SQL
+    today = Date.today
+    dates = [today, today-1, today-2].map { |date| date.iso8601 }
+    query(sql, dates[0], dates[1], dates[2], project_id)
+  end
+
+  def table_ready_tickets_for_project(project_id)
+    sql = <<~SQL
+          SELECT t.id,
+                 t.title,
+                 p.name AS project_name,
+                 u.name AS dev_name,
+                 t.priority,
+                 t.status,
+                 t.type,
+                 t.created_on,
+                 t.submitter_id,
+                 t.project_id
+            FROM tickets  AS t
+       LEFT JOIN projects AS p ON (p.id = t.project_id)
+       LEFT JOIN users    AS u ON (t.developer_id = u.id)
+           WHERE t.project_id = $1
+        ORDER BY t.created_on DESC;
+    SQL
+    query(sql, project_id)
   end
 
   # Returns tickets for a specified project
@@ -479,6 +531,17 @@ class DatabasePersistence
     query(sql, iso_date, project_id)
   end
 
+  def get_resolved_ticket_count(iso_date)
+    sql = <<~SQL
+          SELECT date(updated_on), count(id)
+            FROM tickets
+           WHERE updated_on::date = $1
+             AND status = 'Resolved'
+        GROUP BY updated_on;
+    SQL
+    query(sql, iso_date)
+  end
+
   def get_resolved_ticket_count_for_project(iso_date, project_id)
     sql = <<~SQL
           SELECT date(tickets.created_on), count(tickets.id)
@@ -491,16 +554,7 @@ class DatabasePersistence
     query(sql, iso_date, project_id)
   end
 
-  def get_resolved_ticket_count(iso_date)
-    sql = <<~SQL
-          SELECT date(updated_on), count(id)
-            FROM tickets
-           WHERE updated_on::date = $1
-             AND status = 'Resolved'
-        GROUP BY updated_on;
-    SQL
-    query(sql, iso_date)
-  end
+
 
   # ---------------------------------------------------------------------------- #
   # -------------PRIVATE-------------------------------------------------------- #

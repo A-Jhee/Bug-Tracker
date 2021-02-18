@@ -77,11 +77,6 @@
                     </a>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
                   <li class="nav-item parent open">
                     <a class="nav-link" href="#" role="button" aria-expanded="false">
                       <span class="icon s7-users"></span>
@@ -139,9 +134,9 @@
                       <tbody>
                         <% @users.each_with_index do |user, ind| %>
                           <tr>
-                            <td><%= user["name"] %></td>
+                            <td class="font-weight-bold"><%= user["name"] %></td>
                             <td><%= user["email"] %></td>
-                            <td>
+                            <td class="role-select-cell">
                               <form method="post" id="form-<%= ind %>" action="/users">
                                 <div class="form-group row mb-1">
                                   <input type="hidden" name="user_id" value="<%= user["id"] %>"/>

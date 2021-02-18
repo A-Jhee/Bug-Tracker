@@ -86,17 +86,14 @@
                     </a>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
-                  <li class="nav-item parent">
-                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                      <span class="icon s7-users"></span>
-                      <span>Users</span>
-                    </a>
-                  </li>
+                  <% if session[:user_role] == "admin" %>
+                    <li class="nav-item parent">
+                      <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                        <span class="icon s7-users"></span>
+                        <span>Users</span>
+                      </a>
+                    </li>
+                  <% end %>
 
                 </ul>
               </div>
@@ -105,8 +102,21 @@
         </nav>
 
         <div class="main-content container">
+
+          <% if session[:success] %>
+            <div class="alert alert-theme alert-info alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-check"></span></div>
+              <div class="message"><%= session.delete(:success) %></div>
+            </div>
+          <% end %>
+
           <div class="row">
-            <div class="col-md-9">
+            <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+              <div class="col-md-9">
+            <% else %>
+              <div class="col-md-12">
+            <% end %>
               <div class="card card-border-color card-border-color-primary">
                 <div class="card-header card-header-divider">
                   <div class="tools">
@@ -123,32 +133,23 @@
               </div>
             </div>
 
-            <div class="col-md-3" id="action-center">
-              <div class="card card-border-color card-border-color-primary">
-                <div class="card-header">
-                  <span class="icon s7-ticket"></span> Ticket Assignment
-                </div>
-                <div class="card-body">
-                  <p>You have <%= @tickets_without_devs.size %> ticket waiting for assignment.</p>
-                  <form action="/tickets" method="get">
-                    <input type="hidden" name="dev" value="unassigned">
-                    <button type="submit" class="btn btn-primary">Ticket Assignment</button>
-                  </form>
+            <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+              <div class="col-md-3" id="action-center">
+                <div class="card card-border-color card-border-color-primary">
+                  <div class="card-header">
+                    <span class="icon s7-ticket"></span> Ticket Assignment
+                  </div>
+                  <div class="card-body">
+                    <p>You have <%= @tickets_without_devs.size %> ticket waiting for assignment.</p>
+                    <form action="/tickets" method="get">
+                      <input type="hidden" name="dev" value="unassigned">
+                      <button type="submit" class="btn btn-primary">Ticket Assignment</button>
+                    </form>
+                  </div>
                 </div>
               </div>
+            <% end %>  
 
-              <div class="card card-border-color card-border-color-primary">
-                <div class="card-header">
-                  <span class="icon s7-users"></span> User Role Assignment
-                </div>
-                <div class="card-body">
-                  <p>You have <%= @users_without_roles.ntuples %> new user waiting for role assignment.</p>
-                  <form action="/users" method="get">
-                    <input type="hidden" name="role" value="unassigned">
-                    <button type="submit" class="btn btn-primary">User Assignment</button>
-                  </form>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -177,7 +178,7 @@
                       <% @last_3days_tickets.each do |ticket| %>
                         <tr>
                           <td><%= ticket['project_name'] %></td>
-                          <td><%= ticket['title'] %></td>
+                          <td class="font-weight-bold"><%= ticket['title'] %></td>
                           <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket['status'] %></td>
                           <td class="center"><%= ticket['type'] %></td>
                           <td>

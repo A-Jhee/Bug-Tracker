@@ -85,17 +85,14 @@
                     </ul>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
-                  <li class="nav-item parent">
-                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                      <span class="icon s7-users"></span>
-                      <span>Users</span>
-                    </a>
-                  </li>
+                  <% if session[:user_role] == "admin" %>
+                    <li class="nav-item parent">
+                      <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                        <span class="icon s7-users"></span>
+                        <span>Users</span>
+                      </a>
+                    </li>
+                  <% end %>
 
                 </ul>
               </div>
@@ -186,20 +183,32 @@
                           </div>
                         </div>
                       </div>
-                      <div class="form-group row">
-                        <label class="col-12 col-form-label">Assigned Developer</label>
-                        <div class="col-12">
-                          <select class="form-control custom-select" name="developer_id">
-                            <% @developers.each do |developer| %>
-                              <% if developer["id"] == @developer_id %>
-                                <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
+                      
+                      <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+                        <div class="form-group row">
+                          <label class="col-12 col-form-label">Assigned Developer</label>
+                          <div class="col-12">
+                            <select class="form-control custom-select py-0" name="developer_id">
+                              <% if @developer_name == "Unassigned" %>
+                                <option value="0" selected="selected">Unassigned</option>
                               <% else %>
-                                <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+                                <option value="0">Unassigned</option>
                               <% end %>
-                            <% end %>
-                          </select>
+                                  
+                              <% @developers.each do |developer| %>
+                                <% if developer["id"] == @developer_id %>
+                                  <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
+                                <% else %>
+                                  <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
+                                <% end %>
+                              <% end %>
+                            </select>
+                          </div>
                         </div>
-                      </div>
+                      <% else %>
+                        <input type="hidden" name="developer_id" value="<%= @developer_id %>"/>
+                      <% end %>
+
                       <div class="form-group row mt-1 ticket-edit-select">
                         <div class="form-group row">
                           <label class="col-12 col-form-label">Ticket Type</label>
@@ -254,6 +263,22 @@
               <div class="modal-overlay"></div>
             </div>
           </div>
+
+          <% if session[:error] %>
+            <div class="alert alert-theme alert-danger alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-attention"></span></div>
+              <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+            </div>
+          <% end %>
+
+          <% if session[:success] %>
+            <div class="alert alert-theme alert-info alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-check"></span></div>
+              <div class="message"><strong>Success!</strong> <%= session.delete(:success) %></div>
+            </div>
+          <% end %>
 
           <div class="row">
             <div class="col-md-8">
@@ -326,7 +351,7 @@
                             <td>
                               <a href="/tickets/<%= params[:id] %>/<%= file["filename"] %>" target="_blank"><%= file["filename"] %></a>
                             </td>
-                            <td><%= file["notes"] %></td>
+                            <td class="font-weight-bold"><%= file["notes"] %></td>
                             <td><%= file["uploader_name"] %></td>
                             <td><%= parse_timestamp(file["uploaded_on"]) %></td>
                           </tr>
@@ -359,7 +384,7 @@
                         <% @histories.each do |history| %>
                           <tr>
                             <td><%= parse_timestamp(history["updated_on"]) %></td>
-                            <td><%= prettify_property_name(history["property"]) %></td>
+                            <td class="font-weight-bold"><%= prettify_property_name(history["property"]) %></td>
                             <td class="update-previous"><%= history["previous_value"] %></td>
                             <td class="update-current"><%= history["current_value"] %></td>
                             <td><%= history["user_id"] %></td>
@@ -391,7 +416,7 @@
                         <% @comments.each do |comment| %>
                           <tr>
                             <td><%= parse_timestamp(comment["created_on"]) %></td>
-                            <td><%= comment["message"] %></td>
+                            <td class="font-weight-bold"><%= comment["message"] %></td>
                             <td><%= comment["commenter"] %></td>
                           </tr>
                         <% end %>

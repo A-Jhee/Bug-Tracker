@@ -85,17 +85,14 @@
                     </a>
                   </li>
 
-                  <!--  -->
-                  <!--  -->
-                  <!-- ADD RUBY CODE ABOUT ONLY SHOWING IT FOR ADMIN -->
-                  <!--  -->
-                  <!--  -->
-                  <li class="nav-item parent">
-                    <a class="nav-link" href="/users" role="button" aria-expanded="false">
-                      <span class="icon s7-users"></span>
-                      <span>Users</span>
-                    </a>
-                  </li>
+                  <% if session[:user_role] == "admin" %>
+                    <li class="nav-item parent">
+                      <a class="nav-link" href="/users" role="button" aria-expanded="false">
+                        <span class="icon s7-users"></span>
+                        <span>Users</span>
+                      </a>
+                    </li>
+                  <% end %>
 
                 </ul>
               </div>
@@ -117,45 +114,47 @@
             <div class="col-md-12 d-flex align-items-center justify-content-between">
               <h2>Project Details</h2>
 
-              <div class="d-flex justify-content-end ticket-option-btn">
-                <form action="/projects/<%= params[:id] %>/users" method="get">
-                  <button type="submit" class="btn btn-space btn-primary">
-                    <i class="icon icon-left s7-add-user mr-2"></i>Assign Users
+              <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+                <div class="d-flex justify-content-end ticket-option-btn">
+                  <form action="/projects/<%= params[:id] %>/users" method="get">
+                    <button type="submit" class="btn btn-space btn-primary">
+                      <i class="icon icon-left s7-add-user mr-2"></i>Assign Users
+                    </button>
+                  </form>
+
+                  <button class="btn btn-space btn-primary md-trigger ml-2" data-modal="edit-project">
+                    <i class="icon icon-left s7-edit"></i> Edit
                   </button>
-                </form>
-                <button class="btn btn-space btn-primary md-trigger ml-2" data-modal="edit-project">
-                  <i class="icon icon-left s7-edit"></i> Edit
-                </button>
-              </div>
-              <div class="modal-container modal-effect-8" id="edit-project">
-                <div class="modal-content">
-                  <div class="modal-header modal-header-colored modal-header-colored-primary">
-                    <h4 class="modal-title">Edit</h4>
-                    <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
-                  </div>
-                  <div class="modal-body">
-                    <form method="post" action="/projects/<%= params[:id] %>" data-parsley-validate="" novalidate="">
-                      <div class="form-group">
-                        <label for="title">Project Name</label>
-                        <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" value="<%= params[:name] || @project["name"] %>" data-parsley-uniqueProjectName="" autocomplete="off"/>
-                      </div>
-                      <div class="form-group">
-                        <label for="desc">Description</label>
-                        <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= params[:description] || @project["description"] %></textarea>
-                      </div>
-                      <div class="row d-flex justify-content-end">
-                        <div class="col-lg-6">
-                          <p class="text-right">
-                            <button class="btn btn-space btn-primary" type="submit">Save Changes</button>
-                          </p>
+                </div>
+                <div class="modal-container modal-effect-8" id="edit-project">
+                  <div class="modal-content">
+                    <div class="modal-header modal-header-colored modal-header-colored-primary">
+                      <h4 class="modal-title">Edit</h4>
+                      <button class="close modal-close" type="button" data-dismiss="modal" aria-hidden="true"><span class="s7-close"></span></button>
+                    </div>
+                    <div class="modal-body">
+                      <form method="post" action="/projects/<%= params[:id] %>" data-parsley-validate="" novalidate="">
+                        <div class="form-group">
+                          <label for="title">Project Name</label>
+                          <input class="form-control" type="text" id="name" name="name" parsley-trigger="change" required="" value="<%= params[:name] || @project["name"] %>" data-parsley-uniqueProjectName="" autocomplete="off"/>
                         </div>
-                      </div>
-                    </form>
+                        <div class="form-group">
+                          <label for="desc">Description</label>
+                          <textarea class="form-control" id="desc" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= params[:description] || @project["description"] %></textarea>
+                        </div>
+                        <div class="row d-flex justify-content-end">
+                          <div class="col-lg-6">
+                            <p class="text-right">
+                              <button class="btn btn-space btn-primary" type="submit">Save Changes</button>
+                            </p>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="modal-overlay"></div>
-
+                <div class="modal-overlay"></div>
+              <% end %>
             </div>
           </div>
 
@@ -164,6 +163,14 @@
               <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
               <div class="icon"><span class="s7-attention"></span></div>
               <div class="message"><strong>Warning!</strong> <%= session.delete(:error) %></div>
+            </div>
+          <% end %>
+
+          <% if session[:success] %>
+            <div class="alert alert-theme alert-info alert-dismissible" role="alert">
+              <button class="close" type="button" data-dismiss="alert" aria-label="Close"><span class="s7-close" aria-hidden="true"></span></button>
+              <div class="icon"><span class="s7-check"></span></div>
+              <div class="message"><strong>Success!</strong> <%= session.delete(:success) %></div>
             </div>
           <% end %>
 
@@ -233,7 +240,7 @@
                       <tbody>
                         <% @assigned_users.each do |user| %>
                           <tr>
-                            <td><%= user["name"] %></td>
+                            <td class="font-weight-bold"><%= user["name"] %></td>
                             <td><%= prettify_user_role(user["role"]) %></td>
                             <td><%= user["email"] %></td>
                           </tr>
@@ -257,9 +264,9 @@
                         <tr>
                           <th>Ticket ID</th>
                           <th>Title</th>
-                          <th>Priority</th>
                           <th>Status</th>
                           <th>Type</th>
+                          <th>Priority</th>
                           <th>Assigned to</th>
                           <th>Submitted by</th>
                           <th>Created on</th>
@@ -270,10 +277,12 @@
                         <% @tickets.each do |ticket| %>
                           <tr>
                             <td><%= ticket["id"] %></td>
-                            <td><%= ticket["title"] %></td>
-                            <td><%= ticket["priority"] %></td>
-                            <td><%= ticket["status"] %></td>
+                            <td class="font-weight-bold"><%= ticket["title"] %></td>
+                            <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket["status"] %></td>
                             <td><%= ticket["type"] %></td>
+                            <td>
+                              <ul class="ticket-priority <%= ticket['priority'].downcase %>"><li><%= ticket['priority'] %></li></ul>
+                            </td>
                             <td><%= ticket["developer_name"] %></td>
                             <td><%= ticket["submitter_name"] %></td>
                             <td><%= ticket["created_on"] %></td>
