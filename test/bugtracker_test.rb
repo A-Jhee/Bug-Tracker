@@ -1,16 +1,19 @@
-# require "simplecov"
+# require 'simplecov'
 # SimpleCov.start
 
-ENV["RACK_ENV"] = "test"
+ENV['RACK_ENV'] = 'test'
 
-require "minitest/autorun"
-require "minitest/reporters"
-require "rack/test"
+require 'minitest/autorun'
+require 'minitest/reporters'
+require 'rack/test'
+require 'pg'
 
 MiniTest::Reporters.use!
 
-require_relative "../bugtracker"
-require_relative "../database_persistence"
+require_relative '../bugtracker'
+require_relative '../models/user'
+require_relative '../models/project'
+require_relative '../models/ticket'
 
 class BugtrackerTest < Minitest::Test
   include Rack::Test::Methods
@@ -20,7 +23,7 @@ class BugtrackerTest < Minitest::Test
   end
 
   def setup
-    @test_db = DatabasePersistence.new("bugtrack_test")
+    @test_db = PG.connect(dbname: 'bugtrack_test')
     sql = <<~SQL
     TRUNCATE projects,
              projects_users_assignments,
@@ -30,21 +33,45 @@ class BugtrackerTest < Minitest::Test
              ticket_attachments
              RESTART IDENTITY;
     SQL
-    @test_db.query(sql)
+    @test_db.exec(sql)
     
     create_dummy_projects
     create_dummy_tickets
+    assign_users_to_projects
   end
 
   def teardown
-    @test_db.disconnect
-  end
-
-  def session
-    last_request.env["rack.session"]
+    @test_db.close
   end
 
   # ----- HELPER METHODS ----- #
+  # ----- HELPER METHODS ----- #
+  # ----- HELPER METHODS ----- #
+
+  def session
+    last_request.env['rack.session']
+  end
+
+  def admin_session
+    { "rack.session" => { user: User.new(@test_db, '1') } }
+  end
+
+  def pm_session
+    { "rack.session" => { user: User.new(@test_db, '2') } }
+  end
+  
+  def dev_session
+    { "rack.session" => { user: User.new(@test_db, '3') } }
+  end
+
+  def qa_session
+    { "rack.session" => { user: User.new(@test_db, '4') } }
+  end
+
+  def assert_role(role)
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, role
+  end
 
   def logout
     session.clear
@@ -52,34 +79,54 @@ class BugtrackerTest < Minitest::Test
 
   def create_dummy_projects
     # project 1
-    @test_db.create_project('bugtracker', 'WebApp built on PSQL to submit/track bug reports during software development')
+    Project.create(@test_db, 'bugtracker', 'WebApp built on PSQL to track bug')
     # project 2
-    @test_db.create_project('finance manager', 'Personal finance manager to budgeting and record keeping')
+    Project.create(@test_db, 'finance manager', 'Personal finance/budget manager')
+    # project 3
+    Project.create(@test_db, 'text editor', 'simple text editor')
   end
 
   def create_dummy_tickets
     # ticket 1
-    @test_db.create_ticket('Open', 'Unable to login',
-      'Create a login functionality with 4 demo logins',
-      'Feature Request', 'Low', 4, 1, 3)
+    Ticket.create(@test_db, ['Open', 'Unable to login',
+                             'Create a login functionality',
+                             'Bug/Error Report', 'Low', 4, 3, 1])
     # ticket 2
-    @test_db.create_ticket('Resolved', 'Object model to handle database',
-      'Create an DatabasePersistence.rb file for all database handling',
-      'Feature Request', 'High', 4, 1, 3)
+    Ticket.create(@test_db, ['In Progress', 'Object models',
+                             'models for all database handling',
+                             'Feature Request', 'High', 2, 1, 3])
     # ticket 3
-    @test_db.create_ticket('In Progress', 'Test suite',
-      'Create a test suite to test all the routes so far',
-      'Service Request', 'High', 4, 1, 3)
+    Ticket.create(@test_db, ['Resolved', 'Test suite',
+                             'Create test suites for all',
+                             'Service Request', 'Critical', 1, 2, 2])
     # ticket 4
-    @test_db.create_ticket('Open', 'Finance manager roadmap',
-      'Draw up a rough draft for finance manager app roadmap',
-      'Other', 'Low', 4, 2, 3)
+    Ticket.create(@test_db, ['Add. Info Required', 'frontend/css',
+                             'integrate bootstrap/css',
+                             'Other', 'High', 3, 1, 4])
   end
 
-  def create_dummy_ticket_comments(ticket_id)
-    comment = "This message is for testing purposes only."
-    commenter_id = 4
-    @test_db.create_comment(comment, commenter_id, ticket_id)
+  def assign_users_to_projects
+    # project 1: pm, dev, qa
+    project1 = Project.new(@test_db, '1')
+    project1.assign_user(@test_db, '2', 'project_manager')
+    project1.assign_user(@test_db, '3', 'developer')
+    project1.assign_user(@test_db, '4', 'quality_assurance')
+    # project 2: admin, dev
+    project2 = Project.new(@test_db, '2')
+    project2.assign_user(@test_db, '1', 'admin')
+    project2.assign_user(@test_db, '3', 'developer')
+    # project 3: pm, qa
+    project3 = Project.new(@test_db, '3')
+    project3.assign_user(@test_db, '2', 'project_manager')
+    project3.assign_user(@test_db, '4', 'quality_assurance')
+  end
+
+  def create_dummy_comment(commenter_id, ticket_id)
+    sql = <<~SQL
+      INSERT INTO ticket_comments (comment, commenter_id, ticket_id)
+           VALUES ('This message is for testing purposes only.', $1, $2)
+    SQL
+    @test_db.exec_params(sql, [ commenter_id, ticket_id ])
   end
 
   def delete_test_user
@@ -88,587 +135,646 @@ class BugtrackerTest < Minitest::Test
             WHERE name = 'George Washington'
               AND email = 'gwash@potus.gov';
     SQL
-    @test_db.query(sql)
+    @test_db.exec(sql)
   end
 
   # ----- END OF HELPER METHODS ----- #
+  # ----- END OF HELPER METHODS ----- #
 
-  # def test_welcome_message_and_role
-  #   get "/dashboard"
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
+# -------------REGISTER/LOGIN/USERS/DASHBOARD--------------------------------- #
 
-  #   assert_equal 200, last_response.status
-  #   assert_includes last_response.body, "DEMO_QualityAssurance"
-  #   assert_includes last_response.body, "quality_assurance"
-  # end
+  # VIEW REGISTER FORM
+  def test_get_register
+    get '/register'
 
-  def test_dashboard_redirect
-    get "/"
-    
+    assert_nil session[:user]
+    assert_includes last_response.body, "Already have an account?"
+    assert_includes last_response.body, "Log in instead"
+    assert_includes last_response.body, %q(id="username_register")
+    assert_includes last_response.body, %q(id="email_register")
+    assert_includes last_response.body, %q(id="password")
+    assert_includes last_response.body, %q(data-parsley-equalto="#password")
+  end
+
+  # REGISTER NEW ACCOUNT
+  def test_post_register
+    # invalid: username already taken -> error
+    post '/register', {first_name: 'George', last_name: 'Washington',
+                       email: 'gwash@potus.gov', username: 'dev',
+                       password: 'imTHEfirst1'}
+
+    assert_includes last_response.body, 'That username is already taken'
+    assert_includes last_response.body, 'Already have an account?'
+    assert_includes last_response.body, 'dev'
+
+    # invalid: email already in use -> error
+    post '/register', {first_name: 'George', last_name: 'Washington',
+                       email: 'admin@demonstration.com', username: 'gwash',
+                       password: 'imTHEfirst1'}
+
+    assert_includes last_response.body, 'That email is already in use'
+    assert_includes last_response.body, 'Already have an account?'
+    assert_includes last_response.body, 'admin@demonstration.com'
+
+    get '/login'
+    # passes all validation
+    post '/register', {first_name: 'George', last_name: 'Washington',
+                       email: 'gwash@potus.gov', username: 'gwash',
+                       password: 'imTHEfirst1'}
+
+    success_msg = 'You are now logged in to your new account, George Washington.'
+
     assert_equal 302, last_response.status
+    assert_equal success_msg, session[:success]
+    assert session[:user]
+    assert_equal 'gwash', session[:user].login
+    assert_equal 'gwash@potus.gov', session[:user].email
 
     get last_response["Location"]
     assert_equal 200, last_response.status
-    assert_equal "text/html;charset=utf-8", last_response["Content-Type"]
-    assert_includes last_response.body, "<h2>Welcome,"
-    assert_includes last_response.body, "<h2>You are logged in as"
-    assert_includes last_response.body, "Dashboard"
-    assert_includes last_response.body, "My Projects"
-    assert_includes last_response.body, "My Tickets"
+
+    assert_includes last_response.body, 'Dashboard'
+
+    delete_test_user
   end
+  
+  # VIEW LOGIN FORM
+  def test_get_login
+    get '/login'
+
+    assert_nil session[:user]
+    assert_includes last_response.body, %q(<title>GECKO bug tracker</title>)
+    assert_includes last_response.body, "Don't have an account?"
+    assert_includes last_response.body, "Register"
+    assert_includes last_response.body, %q(type="submit">Login)
+    assert_includes last_response.body, "Or Login With A Demo Account"
+    assert_includes last_response.body, %q(type="submit">Admin)
+    assert_includes last_response.body, %q(type="submit">Project Manager)
+    assert_includes last_response.body, %q(type="submit">Developer)
+    assert_includes last_response.body, %q(type="submit">QA)
+  end
+
+  # POST LOGIN INFO
+  def test_post_login
+    # invalid login
+    post '/login', {username: 'wrong_login', password: 'admin1admin1'}
+
+    assert_equal 302, last_response.status
+    assert_equal 'Username or password was incorrect.', session[:error]
+
+    # invalid password
+    post '/login', {username: 'admin', password: 'wrong_pass'}
+
+    assert_equal 302, last_response.status
+    assert_equal 'Username or password was incorrect.', session[:error]
+
+    get last_response["Location"]
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, %q(type="submit">Login)
+
+    # valid login
+    post '/login', {username: 'admin', password: 'admin1admin1'}
+    assert_equal 302, last_response.status
+    assert session[:user]
+    assert_equal 'admin', session[:user].login
+    assert_equal 'admin@demonstration.com', session[:user].email
+
+    get last_response["Location"]
+    assert_equal 200, last_response.status
+
+    assert_includes last_response.body, 'Dashboard'
+  end
+
+  # TRIGGER LOGOUT THEN REDIRECT TO /LOGIN
+  def test_get_logout
+    get '/logout', {}, qa_session
+
+    assert_equal 302, last_response.status
+    assert session.empty?
+
+    get last_response["Location"]
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, %q(type="submit">Login)
+  end
+
+
+  # VIEW DASHBOARD ADMIN
+  def test_dashboard_demo
+    post '/login/demo', {demo_login_role: 'admin'}
+
+    assert_equal 302, last_response.status
+    get last_response["Location"]
+
+    assert_role('Admin')
+    assert_includes last_response.body, 'Ticket Assignment'
+    assert_includes last_response.body, 'Dashboard'
+
+    post '/login/demo', {demo_login_role: 'project_manager'}
+
+    assert_equal 302, last_response.status
+    get last_response["Location"]
+
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'Ticket Assignment'
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Tickets Opened in the Past 3 Days'
+
+    post '/login/demo', {demo_login_role: 'developer'}
+
+    assert_equal 302, last_response.status
+    get last_response["Location"]
+
+    assert_role('Developer')
+
+    post '/login/demo', {demo_login_role: 'quality_assurance'}
+
+    assert_equal 302, last_response.status
+    get last_response["Location"]
+
+    assert_role('Quality Assurance')
+  end
+
+  # VIEW PROFILE EDIT FORM
+  def test_get_profile
+    get '/profile', {}, admin_session
+
+    assert_role('Admin')
+    assert_includes last_response.body, 'admin@demonstration.com'
+    assert_includes last_response.body, 'Change Personal Information'
+    assert_includes last_response.body, 'Update Password'
+
+    get '/profile', {}, pm_session
+    
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'project_manager@demonstration.com'
+
+    get '/profile', {}, dev_session
+
+    assert_role('Developer')
+    assert_includes last_response.body, 'developer@demonstration.com'
+
+    get '/profile', {}, qa_session
+
+    assert_role('Quality Assurance')
+    assert_includes last_response.body, 'quality_assurance@demonstration.com'
+  end
+
+  # POST PROFILE INFO UPDATE (NAME, EMAIL)
+  def test_post_profile_info_update
+    post '/profile/info_update',
+         {first_name: 'Freddy', last_name: 'Mercury', email: 'fmer@queen.com'},
+         dev_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'You successfully updated your information.', session[:success]
+    get last_response["Location"]
+
+    assert_includes last_response.body, 'Freddy'
+    assert_includes last_response.body, 'Mercury'
+    assert_includes last_response.body, 'fmer@queen.com'
+
+    post '/profile/info_update',
+         {first_name: 'Freddy', last_name: 'Mercury',
+          email: 'project_manager@demonstration.com'},
+         dev_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'That email is already in use', session[:error]
+
+    post '/profile/info_update',
+         {first_name: 'Developer', last_name: 'Demo',
+            email: 'developer@demonstration.com'},
+         dev_session
+  end
+
+  # POST PASSWORD UPDATE
+  def test_post_profile_pass_update
+    post '/profile/password_update',
+         {pass_current: 'admin1admin1', pass_new: 'brandNEWpass'},
+         admin_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'You successfully updated your password.', session[:success]
+
+    post '/profile/password_update',
+         {pass_current: 'wrong_pass', pass_new: 'justANYpass'},
+         admin_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'Current password was incorrect.', session[:error]
+
+    post '/profile/password_update',
+         {pass_current: 'brandNEWpass', pass_new: 'admin1admin1'},
+         admin_session
+  end
+  
+  # VIEW ROLE ASSIGNMENT FORM
+  def test_get_user_roles
+    get '/users', {}, pm_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'You are not authorized for that action', session[:error]
+
+    get last_response["Location"]
+    assert_includes last_response.body, 'Dashboard'
+
+    get '/users', {}, admin_session
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Manage Users'
+    assert_includes last_response.body, 'Assign User Roles'
+    assert_includes last_response.body, %q(Assign Role</button>)
+  end
+
+  # UPDATE ROLE ASSIGNMENT
+  def test_post_user_roles
+    post '/users', {user_id: '4', role: 'project_manager'}, admin_session
+
+    assert_equal 302, last_response.status
+    assert_equal "You successfully assigned the role of 'Project Manager' to " +
+    "Quality Assurance Demo", session[:success]
+
+    post '/users', {user_id: '4', role: 'quality_assurance'}, admin_session
+  end
+
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
+# -------------PROJECTS------------------------------------------------------- #
 
   def test_get_projects
-    get "/projects"
+    get '/projects', {}, admin_session
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "bugtracker"
-    assert_includes last_response.body, "finance manager"
-    assert_includes last_response.body, "Personal finance manager to budgeting"
-    assert_includes last_response.body, "Create A Ticket"
+    assert_role('Admin')
+    assert_includes last_response.body, 'bugtracker'
+    assert_includes last_response.body, 'finance manager'
+    assert_includes last_response.body, 'Personal finance/budget manager'
+    assert_includes last_response.body, 'text editor'
+    assert_includes last_response.body, 'Not Assigned'
+    assert_includes last_response.body, 'Create New Project'
+
+    get '/projects', {}, pm_session
+  
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'Projects Overview'
+    assert_includes last_response.body, 'bugtracker'
+    assert_includes last_response.body, 'text editor'
+
+    refute_includes last_response.body, 'Create New Project'
+    refute_includes last_response.body, 'finance manager'
+
+    get '/projects', {}, dev_session
+
+    assert_role('Developer')
+    assert_includes last_response.body, 'Projects Overview'
+    assert_includes last_response.body, 'bugtracker'
+    assert_includes last_response.body, 'finance manager'
+
+    refute_includes last_response.body, 'Create New Project'
+    refute_includes last_response.body, 'text editor'
+
+    get '/projects', {}, qa_session
+
+    assert_role('Quality Assurance')
+    assert_includes last_response.body, 'Projects Overview'
+    assert_includes last_response.body, 'bugtracker'
+    assert_includes last_response.body, 'text editor'
+
+    refute_includes last_response.body, 'Create New Project'
+    refute_includes last_response.body, 'finance manager'
   end
 
-  def test_get_tickets
-    get "/tickets"
-
-    assert_equal 200, last_response.status
-    assert_equal "text/html;charset=utf-8", last_response["Content-Type"]
-    assert_includes last_response.body, %q(href="/tickets/new/")
-    assert_includes last_response.body, "Edit/Assign"
-    assert_includes last_response.body, "Details"
-    assert_includes last_response.body, "Title"
-    assert_includes last_response.body, "Project Name"
-    assert_includes last_response.body, "Developer Assigned"
-    assert_includes last_response.body, "Ticket Priority"
-    assert_includes last_response.body, "Ticket Status"
-    assert_includes last_response.body, "Ticket Type"
-    assert_includes last_response.body, "Created On"
-    assert_includes last_response.body, "DEMO_Developer"
-
-    assert_includes last_response.body, 'Unable to login'
-    assert_includes last_response.body, 'Object model to handle database'
-    assert_includes last_response.body, 'Test suite'
-    assert_includes last_response.body, 'Finance manager roadmap'
-  end
-
-  def test_get_tickets_new
-    get "/tickets/new/"
-
-    assert_equal 200, last_response.status
-    assert_equal "text/html;charset=utf-8", last_response["Content-Type"]
-    assert_includes last_response.body, %q(<select name="project_id")
-    assert_includes last_response.body, "Ticket Priority"
-    assert_includes last_response.body, "Ticket Type"
-    assert_includes last_response.body, "Title"
-    assert_includes last_response.body, "Description"
-    assert_includes last_response.body, %q(<input type="text" name="description")
-    assert_includes last_response.body, "Back to Tickets List"
-    assert_includes last_response.body, %q(<button type="submit")
-  end
-
-  def test_post_tickets_new
-    post "/tickets/new/", {title: 'testing new ticket', 
-      description: 'testing post tickets route', 
-      type: 'Others', priority: 'Low', project_id: 1}
-
-    assert_equal 302, last_response.status
-    assert_equal "You have successfully submitted a new ticket.", session[:success]
-
-    get last_response["Location"]
-    assert_equal 200, last_response.status
-    assert_nil session[:success]
-    assert_includes last_response.body, 'testing new ticket'
-    assert_includes last_response.body, 'Others'
-  end
-
-  def test_post_tickets_new_with_invalid_title
-    post "/tickets/new/", {title: '     ', 
-      description: 'testing post tickets route', 
-      type: 'Other', priority: 'High', project_id: 2}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Ticket title must be between 1 and 100 characters."
-    assert_includes last_response.body, "High"
-    assert_includes last_response.body, "Other"
-    assert_includes last_response.body, "finance manager"
-    assert_includes last_response.body, "     "
-  end
-
-  def test_post_tickets_new_with_invalid_description
-    post "/tickets/new/", {title: 'test_title', 
-      description: '     ', 
-      type: 'Other', priority: 'High', project_id: 2}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Description must be between 1 and 300 characters."
-    assert_includes last_response.body, "High"
-    assert_includes last_response.body, "Other"
-    assert_includes last_response.body, "finance manager"
-    assert_includes last_response.body, "     "
-    assert_includes last_response.body, "test_title"
-  end
-
-  def test_get_tickets_new_project_id
-    get "/tickets/new/1"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(<h3>"bugtracker")
-    assert_includes last_response.body, %q(<input type="hidden" name="project_id" value="1")
-    assert_includes last_response.body, %q(<button type="submit")
-
-    get "/tickets/new/2"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(<h3>"finance manager")
-    assert_includes last_response.body, %q(<input type="hidden" name="project_id" value="2")
-    assert_includes last_response.body, "Back to Tickets List"
-    assert_includes last_response.body, %q(<button type="submit")
-  end
-
-  def test_get_tickets_id_edit
-    # ticket id: 3 = ('In Progress', 'Test suite',
-      # 'Create a test suite to test all the routes so far',
-      # 'Service Request', 'High', 4, 1, 3)
-
-    get "/tickets/3/edit"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Test suite"
-    assert_includes last_response.body, "Create a test suite to test all the routes so far"
-    assert_includes last_response.body, %q(<option selected="selected">High)
-    assert_includes last_response.body, %q(<option selected="selected">In Progress)
-    assert_includes last_response.body, %q(<option selected="selected">Service Request)
-    assert_includes last_response.body, %q(<option value="3" selected="selected">DEMO_Developer)
-    assert_includes last_response.body, %q(action="/tickets/3">)
-    assert_includes last_response.body, "Back to Tickets List"
-    assert_includes last_response.body, %q(<button type="submit">Update Ticket)
-
-    # ticket id: 4 = ('Open', 'Finance manager roadmap',
-    #   'Draw up a rough draft for finance manager app roadmap',
-    #   'Other', 'Low', 4, 2, 3)
-
-    get "/tickets/4/edit"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Finance manager roadmap"
-    assert_includes last_response.body, "Draw up a rough draft for finance manager app roadmap"
-    assert_includes last_response.body, %q(<option selected="selected">Low)
-    assert_includes last_response.body, %q(<option selected="selected">Open)
-    assert_includes last_response.body, %q(<option selected="selected">Other)
-    assert_includes last_response.body, %q(<option value="3" selected="selected">DEMO_Developer)
-    assert_includes last_response.body, %q(action="/tickets/4">)
-    assert_includes last_response.body, "Back to Tickets List"
-    assert_includes last_response.body, %q(<button type="submit">Update Ticket)
-  end
-
-  def test_post_tickets_id_without_edits
-    post "/tickets/4", {title: "Finance manager roadmap",
-                         description: "Draw up a rough draft for finance manager app roadmap",
-                         priority: "Low", status: "Open", type: "Other", 
-                         developer_id: "3"}
-
-    assert_equal 302, last_response.status
-    assert_equal "You did not make any changes. \
-         Make any changes to this ticket, or you can return back to Tickets list.",
-         session[:error]
-
-    get last_response["Location"]
-    assert_includes last_response.body, "Finance manager roadmap"
-    assert_includes last_response.body, %q(<option selected="selected">Low)
-    assert_includes last_response.body, %q(<option selected="selected">Open)
-    assert_includes last_response.body, %q(<option selected="selected">Other)
-    assert_includes last_response.body, %q(<option value="3" selected="selected">DEMO_Developer)
-  end
-
-  def test_post_tickets_id_with_edits
-    post "/tickets/4", {title: "Finance manager roadmap",
-                         description: "Draw up a rough draft for finance manager app roadmap",
-                         priority: "Critical", status: "Add. Info Required", 
-                         type: "Bug/Error Report", developer_id: "5"}
-
-    assert_equal 302, last_response.status
-    assert_equal "You have successfully made changes to a ticket.", session[:success]
-
-    get last_response["Location"]
-    assert_includes last_response.body, "Critical"
-    assert_includes last_response.body, "Add. Info Required"
-    assert_includes last_response.body, "Bug/Error Report"
-    assert_includes last_response.body, "TEST_Developer"
-  end
-
-  def test_post_tickets_id_with_invalid_title
-    post "/tickets/4", {title: "     ",
-                         description: "Draw up a rough draft for finance manager app roadmap",
-                         priority: "Critical", status: "Add. Info Required", type: "Bug/Error Report", 
-                         developer_id: "5"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Make changes to ticket properties"
-    assert_includes last_response.body, "Ticket title must be between 1 and 100 characters."
-    assert_includes last_response.body, "Critical"
-    assert_includes last_response.body, "Bug/Error Report"
-    assert_includes last_response.body, "Add. Info Required"
-    assert_includes last_response.body, "     "
-    assert_includes last_response.body, "TEST_Developer"
-  end
-
-  def test_post_tickets_id_with_invalid_description
-    post "/tickets/4", {title: "Finance manager roadmap",
-                         description: "     ",
-                         priority: "Critical", status: "Add. Info Required", type: "Bug/Error Report", 
-                         developer_id: "5"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Make changes to ticket properties"
-    assert_includes last_response.body, "Description must be between 1 and 300 characters."
-    assert_includes last_response.body, "     "
-  end
-
-  def test_update_ticket_history_within_tickets_edit
-    # old ticket id: 4 = ('Open', 'Finance manager roadmap',
-    #   'Draw up a rough draft for finance manager app roadmap',
-    #   'Other', 'Low', 4, 2, 3)
-
-    post "/tickets/4", {title: "Finance manager roadmap",
-                         description: "Draw up a rough draft for finance manager app roadmap",
-                         priority: "Critical", status: "Add. Info Required", 
-                         type: "Bug/Error Report", developer_id: "5"}
-
-    assert_equal 302, last_response.status
-
-    assert_equal "You have successfully made changes to a ticket.", session[:success]
-
-    get last_response["Location"]
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Ticket Details"
-    assert_includes last_response.body, "Critical"
-    assert_includes last_response.body, "Add. Info Required"
-    assert_includes last_response.body, "TEST_Developer"
-  end
-
-  def test_post_delete_ticket
-    # ticket 1 ('Open', 'Unable to login',
-      # 'Create a login functionality with 4 demo logins',
-      # 'Feature Request', 'Low', 4, 1, 3)
-
-    post "/tickets/1/destroy"
-
-    assert_equal 302, last_response.status
-    assert_equal "The ticket has been deleted.", session[:success]
-
-    get last_response["Location"]
-    assert_equal 200, last_response.status
-    refute_includes last_response.body, "Unable to login"
-    refute_includes last_response.body, "Create a login functionality with 4 demo logins"
-  end
-
-  # see ticket details
-  def test_get_ticket_id
-    # ticket 2 ('Resolved', 'Object model to handle database',
-      # 'Create an DatabasePersistence.rb file for all database handling',
-      # 'Feature Request', 'High', 4, 1, 3)
-
-    create_dummy_ticket_comments(2)
-
-    get "/tickets/2"
-
-    assert_equal 200, last_response.status
-
-    # Checking for ticket details
-    assert_includes last_response.body, "Ticket Details"
-    assert_includes last_response.body, "Object model to handle database"
-    assert_includes last_response.body, "ASSIGNED DEVELOPER"
-    assert_includes last_response.body, "DEMO_Developer"
-    assert_includes last_response.body, "UPDATED ON"
-
-    # Checking for comment section
-    assert_includes last_response.body, "Leave your comments here."
-    assert_includes last_response.body, %q(<button type="submit">Add Comment)
-    assert_includes last_response.body, "This message is for testing purposes only."
-  end
-
-  # post a ticket comment
-  def test_post_ticket_id_comment_valid
-    post "/tickets/2/comment", {comment: "This is a test. Do not be alarmed."}
-
-    assert_equal 302, last_response.status
-    get last_response["Location"]
-    assert_includes last_response.body, "This is a test. Do not be alarmed."
-    assert_includes last_response.body, "DEMO_QualityAssurance"
-  end
-
-  # post a ticket comment with invalid entry
-  def test_post_ticket_id_comment_invalid
-    post "/tickets/2/comment", {comment: "      "}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Comment must be between 1 and 300 characters."
-    assert_includes last_response.body, "      "
-  end
-
-  # delete a ticket comment
-  def test_post_ticket_id_comment_commentId_destroy
-    create_dummy_ticket_comments(2)
-
-    post "/tickets/2/comment/1/destroy"
-
-    assert_equal 302, last_response.status
-    assert_equal "The ticket comment has been deleted.", session[:success]
-
-    get last_response["Location"]
-    assert_includes last_response.body, "Ticket Details"
-  end
-
-  # render new project form
-  def test_get_projects_new
-    get "/projects/new"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Create Project"
-    assert_includes last_response.body, "Project Name"
-    assert_includes last_response.body, "Description"
-    assert_includes last_response.body, %q(<button type="submit">Create Project)
-  end
-
-  # post a new project with invalid entries: bad name, bad description, not unique name
+  # post a new project with not-unique name or wrong auth: invalid
   def test_post_projects_new_invalid
-    post "/projects/new", {name: "    ", description: ""}
+    error ='That project name is already in use. A project name must be unique.'
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Project name must be between 1 and 100 characters."
-    assert_includes last_response.body, "    "
+    post '/projects/new',
+         {name: 'bugtracker', description: 'new desc 42'},
+         admin_session
 
-    post "/projects/new", {name: "test project", description: "     "}
+    assert_equal 302, last_response.status
+    assert_equal error, session[:error]
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Description must be between 1 and 300 characters."
-    assert_includes last_response.body, "     "
+    post '/projects/new',
+         {name: 'valid name', description: 'valid desc 23'},
+         pm_session
 
-    post "/projects/new", {name: "bugtracker", description: "valid description"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "That project name is already in use. A project name must be unique."
-    assert_includes last_response.body, "bugtracker"
+    assert_equal 302, last_response.status
+    assert_equal 'You are not authorized for that action', session[:error]
   end
 
-  # post a new project with valid entries
+  # post a new project: valid
   def test_post_projects_new_valid
-    post "/projects/new", {name: "test project", description: "valid description"}
+    success = 'You have successfully created a new project.'
+
+    post '/projects/new',
+         {name: 'test project', description: 'valid description'},
+         admin_session
 
     assert_equal 302, last_response.status
-    assert_equal "You have successfully submitted a new project.", session[:success]
+    assert_equal success, session[:success]
 
-    get last_response["Location"]
-    assert_includes last_response.body, "test project"
-    assert_includes last_response.body, "valid description"
-  end
-
-  # render project edit form
-  def get_project_id_edit
-    get "/projects/1/edit"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Edit Project"
-    assert_includes last_response.body, "bugtracker"
-  end
-
-  # post project edits
-  def post_get_project_id
-    post "/projects/1", {name: "    ", description: ""}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Project name must be between 1 and 100 characters."
-    assert_includes last_response.body, "    "
-
-    post "/projects/1", {name: "test project", description: "     "}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Description must be between 1 and 300 characters."
-    assert_includes last_response.body, "     "
-
-    post "/projects/1", {name: "bugtracker", description: "valid description"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "That project name is already in use. A project name must be unique."
-    assert_includes last_response.body, "bugtracker"
-
-    post "/projects/1", {name: "pig tracker", description: "app for tracking pigs and piglets"}
-
-    assert_equal 302, last_response.status
-    assert_equal "You have successfully updated the project.", session[:success]
-
-    get last_response["Location"]
-    assert_includes last_response.body, "pig tracker"
-    assert_includes last_response.body, "app for tracking pigs and piglets"
+    get last_response['Location']
+    assert_includes last_response.body, 'test project'
+    assert_includes last_response.body, 'valid description'
   end
 
   # render assign users form
   def test_get_projects_id_users
-    get "/projects/1/users"
+    get "/projects/1/users", {}, pm_session
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Assign"
-    assert_includes last_response.body, "bugtracker"
-    assert_includes last_response.body, "Select users you wish to assign to this project"
-    assert_includes last_response.body, "DEMO_Admin"
-    assert_includes last_response.body, %q(<input type="checkbox")
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'Project Assignment'
+    assert_includes last_response.body, 'bugtracker'
+    assert_includes last_response.body, 'Assign Users to Project'
+    assert_includes last_response.body, %q(type="submit">Change User Assignments)
   end
 
   # post new user assignments to a project
   def test_post_projects_id_users
-    ["1", "2", "3"].each { |ticket_id| @test_db.delete_ticket(ticket_id) }
+    error = 'There are no users assigned to this project.'
+    success = 'You have successfully made new user assignments.'
 
-    post "/projects/1/users",
-      {assigned_users: ["2!DEMO_ProjectManager", "3!DEMO_Developer", "5!TEST_Developer"]}
-
-    assert_equal 302, last_response.status
-    assert_equal "You have successfully made new user assignments.", session[:success]
-
-    get last_response["Location"]
-    assert_includes last_response.body, "Edit Project"
-    assert_includes last_response.body, "DEMO_ProjectManager"
-    assert_includes last_response.body, "DEMO_Developer"
-    assert_includes last_response.body, "TEST_Developer"
-
-    refute_includes last_response.body, "DEMO_QualityAssurance"
-
-    post "/projects/1/users",
-      {assigned_users: ["1!DEMO_Admin", "3!DEMO_Developer", "4!DEMO_QualityAssurance"]}
+    post '/projects/2/users',
+      {assigned_users: [ '2!project_manager', '4!quality_assurance' ]},
+      pm_session
 
     assert_equal 302, last_response.status
+    assert_equal success, session[:success]
 
-    get last_response["Location"]
-    assert_includes last_response.body, "Edit Project"
-    assert_includes last_response.body, "DEMO_Admin"
-    assert_includes last_response.body, "DEMO_Developer"
-    assert_includes last_response.body, "DEMO_QualityAssurance"
+    get last_response['Location']
+    assert_includes last_response.body, 'Project Assignment'
+    assert_includes last_response.body, 'finance manager'
+    assert_includes last_response.body, 'Assign Users to Project'
+    assert_includes last_response.body, %q(type="submit">Change User Assignments)
 
-    refute_includes last_response.body, "TEST_Developer"
+    get '/projects/2', {}, pm_session
 
-    post "/projects/1/users"
+    assert_includes last_response.body, 'Project Manager Demo'
+    refute_includes last_response.body, 'Developer Demo'
+    assert_includes last_response.body, 'Quality Assurance Demo'
 
-    assert_equal 302, last_response.status
-    assert_equal "There are no users assigned to this project.", session[:success]
-
-    get last_response["Location"]
-
-    assert_includes last_response.body, "Edit Project"
-
-    refute_includes last_response.body, "TEST_Developer"
-    refute_includes last_response.body, "DEMO_Developer"
-  end
-
-  # render register new user form
-  def test_get_register
-    get "/logout"
-
-    get "/register"
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "E-mail"
-    assert_includes last_response.body, "Password"
-    assert_includes last_response.body, "Already have an account?"
-    assert_includes last_response.body, "Register"
-    assert_includes last_response.body, %q(<button type="submit")
-  end
-
-  # post an invalid register new user form
-  def test_post_register_invalid
-    get "/logout"
-
-    # bad email: existing email - testdev@demonstration.com
-    post "/register", {first_name: "George", last_name: "Washington",
-                       email: "testdev@demonstration.com", username: "g-wash",
-                       password: "imthefirst1"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "That username or email is already in use."
-    assert_includes last_response.body, "Already have an account?"
-    assert_includes last_response.body, "Register"
-    assert_includes last_response.body, %q(<button type="submit")
-
-    # bad username: existing username - admin
-    post "/register", {first_name: "George", last_name: "Washington",
-                       email: "gwash@potus.gov", username: "admin",
-                       password: "imthefirst1"}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "That username or email is already in use."
-    assert_includes last_response.body, "Already have an account?"
-    assert_includes last_response.body, "Register"
-    assert_includes last_response.body, %q(<button type="submit")
-  end
-
-  # post an valid register new user form
-  def test_post_register_valid
-    get "/logout"
-    delete_test_user
-
-    post "/register", {first_name: "George", last_name: "Washington",
-                       email: "gwash@potus.gov", username: "g-wash",
-                       password: "imthefirst1"}
+    post '/projects/1/users', {}, pm_session
 
     assert_equal 302, last_response.status
-    assert_equal "You are now logged in to your new account, George Washington.", session[:success]
-    assert_equal "George Washington", session[:user_name]
-    assert_equal "Unassigned", session[:user_role]
-    assert(session[:user_id])
-
-    get last_response["Location"]
-
-    assert_includes last_response.body, "Welcome,"
-    assert_includes last_response.body, "You are logged in as"
+    assert_equal error, session[:error]
   end
 
-  # render login form
-  def test_get_login
-    get "/logout"
+  # view project details
+  def test_get_projects_id
+    get '/projects/1', {}, admin_session
 
-    get "/login"
+    assert_role('Admin')
+    assert_includes last_response.body, 'Assign Users'
+    assert_includes last_response.body, %q(s7-edit"></i> Edit)
+    assert_includes last_response.body, 'Create New Ticket'
 
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Username"
-    assert_includes last_response.body, "Password"
-    assert_includes last_response.body, "Don't have an account?"
-    assert_includes last_response.body, "Log In"
-    assert_includes last_response.body, %q(<button type="submit")
+    assert_includes last_response.body, 'Project ID: #1'
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Assigned Users'
+    assert_includes last_response.body, 'Project Tickets'
+
+    assert_includes last_response.body, 'Project Manager Demo'
+    assert_includes last_response.body, 'Developer Demo'
+    assert_includes last_response.body, 'Quality Assurance Demo'
+
+    get '/projects/3', {}, pm_session
+    
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'Assign Users'
+    assert_includes last_response.body, %q(s7-edit"></i> Edit)
+    assert_includes last_response.body, 'Create New Ticket'
+
+    assert_includes last_response.body, 'Project Manager Demo'
+    refute_includes last_response.body, 'Developer Demo'
+    assert_includes last_response.body, 'Quality Assurance Demo'
+
+    get '/projects/2', {}, dev_session
+
+    assert_role('Developer')
+
+    refute_includes last_response.body, 'Assign Users'
+    refute_includes last_response.body, %q(s7-edit"></i> Edit)
+    assert_includes last_response.body, 'Create New Ticket'
+
+    assert_includes last_response.body, 'Not Assigned'
+
+    assert_includes last_response.body, 'Admin Demo'
+    assert_includes last_response.body, 'Developer Demo'
+    refute_includes last_response.body, 'Quality Assurance Demo'
+
+    get '/projects/3', {}, qa_session
+
+    assert_role('Quality Assurance')
+    refute_includes last_response.body, 'Assign Users'
+    refute_includes last_response.body, %q(s7-edit"></i> Edit)
+    assert_includes last_response.body, 'Create New Ticket'
   end
 
-  def test_login_invalid
-    get "/logout"
+  # post project edits
+  def post_get_project_id
+    error ='That project name is already in use. A project name must be unique.'
 
-    # correct username, wrong password
-    post "/login", {username: 'admin', password: 'wrongpassword'}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Username or password was incorrect."
-    assert_includes last_response.body, "Don't have an account?"
-    assert_includes last_response.body, "Log In"
-    assert_includes last_response.body, %q(<button type="submit")
-
-    # wrong username, correct password
-    post "/login", {username: 'admin_not', password: 'admin1admin1'}
-
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Username or password was incorrect."
-    assert_includes last_response.body, "Don't have an account?"
-    assert_includes last_response.body, "Log In"
-    assert_includes last_response.body, %q(<button type="submit")
-  end
-
-  def test_login_valid
-    get "/logout"
-
-    post "/login", {username: 'pm', password: 'pm1pm1pm1'}
+    post '/projects/2',
+         {name: 'bugtracker', description: 'valid desc'},
+         pm_session
 
     assert_equal 302, last_response.status
-    assert_equal "You are now logged in as Project Manager, DEMO_ProjectManager.", session[:success]
-    assert_equal "DEMO_ProjectManager", session[:user_name]
-    assert_equal "Project Manager", session[:user_role]
-    assert_equal "2", session[:user_id]
+    assert_equal 'error', session[:error]
 
-    get last_response["Location"]
+    get last_response['Location']
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Project Details'
+    assert_includes last_response.body, 'Project ID: #2'
 
-    assert_includes last_response.body, "Welcome,"
-    assert_includes last_response.body, "You are logged in as"
+    post '/projects/1',
+         {name: 'pig tracker', description: 'app for tracking pigs and piglets'},
+         pm_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'You have successfully updated the project.', session[:success]
+
+    get last_response['Location']
+    assert_includes last_response.body, 'pig tracker'
+    assert_includes last_response.body, 'app for tracking pigs and piglets'
+    assert_includes last_response.body, 'Project ID: #1'
+  end
+
+# # -------------TICKETS-------------------------------------------------------- #
+# # -------------TICKETS-------------------------------------------------------- #
+# # -------------TICKETS-------------------------------------------------------- #
+# # -------------TICKETS-------------------------------------------------------- #
+# # -------------TICKETS-------------------------------------------------------- #
+# # -------------TICKETS-------------------------------------------------------- #
+
+  # view all tickets brought up dynamically for logged in user
+  def test_get_tickets
+    get '/tickets', {}, admin_session
+
+    assert_role('Admin')
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Unresolved Tickets'
+    assert_includes last_response.body, 'Resolved Tickets'
+    assert_includes last_response.body, 'My Submitted Tickets'
+    assert_includes last_response.body, 'Create New Ticket'
+    assert_includes last_response.body, 'View'
+
+    get '/tickets', {}, pm_session
+    
+    assert_role('Project Manager')
+
+    get '/tickets', {}, dev_session
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Unresolved Tickets'
+    assert_includes last_response.body, 'View'
+
+    assert_role('Developer')
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Resolved Tickets'
+    assert_includes last_response.body, 'View'
+
+    get '/tickets', {}, qa_session
+
+    assert_role('Quality Assurance')
+    assert_includes last_response.body, 'Tickets Overview'
+    assert_includes last_response.body, 'Create New Ticket'
+    assert_includes last_response.body, 'View'
+  end
+
+  # see ticket details
+  def test_get_ticket_id
+    # ticket 2
+    # Ticket.create(@test_db, ['In Progress', 'Object models',
+    #                          'models for all database handling',
+    #                          'Feature Request', 'High', 2, 1, 3])
+    create_dummy_comment(4, 2)
+
+    get '/tickets/2', {}, admin_session
+
+    assert_role('Admin')
+    assert_includes last_response.body, 'Ticket Details'
+    assert_includes last_response.body, 'Object models'
+    assert_includes last_response.body, 'Ticket ID: #2'
+    assert_includes last_response.body, 'In Progress'
+    assert_includes last_response.body, 'High'
+    assert_includes last_response.body, 'Add Attachment'
+    assert_includes last_response.body, 'Edit'
+    assert_includes last_response.body, 'Assigned Developer'
+    assert_includes last_response.body, 'Attachments'
+    assert_includes last_response.body, 'Ticket Update History'
+    assert_includes last_response.body, 'Post Comment'
+
+    get '/tickets/2', {}, pm_session
+    
+    assert_role('Project Manager')
+    assert_includes last_response.body, 'Ticket ID: #2'
+    assert_includes last_response.body, 'Add Attachment'
+    assert_includes last_response.body, 'Edit'
+    assert_includes last_response.body, 'Assigned Developer'
+
+    get '/tickets/2', {}, dev_session
+
+    assert_role('Developer')
+    assert_includes last_response.body, 'Ticket ID: #2'
+    assert_includes last_response.body, 'Add Attachment'
+    assert_includes last_response.body, 'Edit'
+    refute_includes last_response.body, 'Assigned Developer'
+
+    get '/tickets/2', {}, qa_session
+
+    assert_role('Quality Assurance')
+    assert_includes last_response.body, 'Ticket ID: #2'
+    assert_includes last_response.body, 'Add Attachment'
+    assert_includes last_response.body, 'Edit'
+    refute_includes last_response.body, 'Assigned Developer'
+    assert_includes last_response.body,
+      'This message is for testing purposes only.'
+  end
+
+  # post a new ticket
+  def test_post_tickets_new
+    success = 'You have successfully submitted a new ticket.'
+
+    post '/tickets/new',
+         {title: 'testing new ticket 5790238',
+          description: 'testing post tickets route',
+          type: 'Others', priority: 'Low', project_id: 3},
+         dev_session
+
+    assert_equal 302, last_response.status
+    assert_equal success, session[:success]
+
+    get last_response['Location']
+    assert_equal 200, last_response.status
+
+    assert_nil session[:success]
+    assert_includes last_response.body, 'testing new ticket 5790238'
+  end
+
+  # post a new ticket from project details view
+  def test_post_tickets_new_from_project_details
+    success = 'You have successfully submitted a new ticket.'
+
+    post '/tickets/new/from-project',
+         {title: 'testing new ticket 5790238',
+          description: 'testing post tickets route',
+          type: 'Others', priority: 'Low', project_id: 3},
+         qa_session
+
+    assert_equal 302, last_response.status
+    assert_equal success, session[:success]
+
+    get last_response['Location']
+    assert_equal 200, last_response.status
+
+    assert_nil session[:success]
+    assert_includes last_response.body, 'testing new ticket 5790238'
+  end
+  
+  # edit ticket properties
+  def test_post_ticket_edits
+    # ticket 1
+    # Ticket.create(@test_db, ['Open', 'Unable to login',
+    #                          'Create a login functionality',
+    #                          'Bug/Error Report', 'Low', 4, 3, 1])
+    post '/tickets/1',
+         {status: 'Add. Info Required', title: 'frontend/css',
+            description: 'integrate bootstrap/css', type: 'Service Request',
+            priority: 'Critical', developer_id: '3'},
+         pm_session
+
+    assert_equal 302, last_response.status
+    assert_equal 'You have successfully made change(s) to a ticket.',
+                 session[:success]
+
+    get last_response['Location']
+    assert_includes last_response.body, 'frontend/css'
+    assert_includes last_response.body, 'Critical'
+    assert_includes last_response.body, 'integrate bootstrap/css'
+    assert_includes last_response.body, 'Add. Info Required'
+    assert_includes last_response.body, 'Service Request'
+    assert_includes last_response.body, 'Critical'
+    assert_includes last_response.body, %q(ASSIGNED TO</span>)
+    assert_includes last_response.body, %q(<h3 class="title">Developer Demo)
+    assert_includes last_response.body, 'Assigned Developer'
+    assert_includes last_response.body, 'Ticket Status'
+  end
+
+  # post a ticket comment
+  def test_post_ticket_id_comment_valid
+    post '/tickets/2/comment',
+         {comment: 'This is a test. Do not be alarmed.'},
+         dev_session
+
+    assert_equal 302, last_response.status
+    get last_response['Location']
+    assert_includes last_response.body, 'This is a test. Do not be alarmed.'
   end
 end

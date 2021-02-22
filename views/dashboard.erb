@@ -25,10 +25,10 @@
               <span id="profile_name">
                 <dl class="mb-0">
                   <dt>
-                    <%= session[:user_name] %>
+                    <%= session[:user].name %>
                   </dt>
                   <dd class="mb-0">
-                    <%= prettify_user_role(session[:user_role]) %>
+                    <%= prettify_user_role(session[:user].role) %>
                   </dd>
                 </dl>
               </span>
@@ -86,7 +86,7 @@
                     </a>
                   </li>
 
-                  <% if session[:user_role] == "admin" %>
+                  <% if session[:user].role == "admin" %>
                     <li class="nav-item parent">
                       <a class="nav-link" href="/users" role="button" aria-expanded="false">
                         <span class="icon s7-users"></span>
@@ -120,7 +120,7 @@
           <% end %>
 
           <div class="row">
-            <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+            <% if session[:user].role == "admin" || session[:user].role == "project_manager" %>
               <div class="col-md-9">
             <% else %>
               <div class="col-md-12">
@@ -141,7 +141,7 @@
               </div>
             </div>
 
-            <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+            <% if session[:user].role == "admin" || session[:user].role == "project_manager" %>
               <div class="col-md-3" id="action-center">
                 <div class="card card-border-color card-border-color-primary">
                   <div class="card-header">

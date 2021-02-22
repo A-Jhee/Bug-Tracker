@@ -23,6 +23,19 @@ var App = (function () {
       sLengthSelect: "form-control form-control-sm",
     } );
 
+    $("#table-unresolved").dataTable({
+      "order": [[ 7, "desc" ]]
+    });
+    $("#table-resolved").dataTable({
+      "order": [[ 7, "desc" ]]
+    });
+    $("#table-submission").dataTable({
+      "order": [[ 7, "desc" ]]
+    });
+    $("#table-project-tickets").dataTable({
+      "order": [[ 7, "desc" ]]
+    });
+
     $("#table1").dataTable({
     });
     $("#table2").dataTable({

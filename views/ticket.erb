@@ -25,10 +25,10 @@
               <span id="profile_name">
                 <dl class="mb-0">
                   <dt>
-                    <%= session[:user_name] %>
+                    <%= session[:user].name %>
                   </dt>
                   <dd class="mb-0">
-                    <%= prettify_user_role(session[:user_role]) %>
+                    <%= prettify_user_role(session[:user].role) %>
                   </dd>
                 </dl>
               </span>
@@ -85,7 +85,7 @@
                     </ul>
                   </li>
 
-                  <% if session[:user_role] == "admin" %>
+                  <% if session[:user].role == "admin" %>
                     <li class="nav-item parent">
                       <a class="nav-link" href="/users" role="button" aria-expanded="false">
                         <span class="icon s7-users"></span>
@@ -157,11 +157,11 @@
                     <form method="post" action="/tickets/<%= params[:id] %>" data-parsley-validate="" novalidate="">
                       <div class="form-group mt-1">
                         <label>Title</label>
-                        <input class="form-control" type="text" name="title" parsley-trigger="change" required="" value="<%= @ticket["title"] %>" autocomplete="off">
+                        <input class="form-control" type="text" name="title" parsley-trigger="change" required="" value="<%= @ticket.title %>" autocomplete="off">
                       </div>
                       <div class="form-group mt-1">
                         <label for="desc2">Description</label>
-                        <textarea class="form-control" id="desc2" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= @ticket["description"] %></textarea>
+                        <textarea class="form-control" id="desc2" name="description" parsley-trigger="change" required="" autocomplete="off" rows="5"><%= @ticket.description %></textarea>
                       </div>
                       <div class="form-group row mt-1 ticket-edit-select">
                         <div class="form-group row">
@@ -169,7 +169,7 @@
                           <div class="col-12">
                             <div class="custom-controls-stacked mt-2 pl-5">
                               <% @statuses.each do |sitrep| %>
-                                <% if sitrep == @ticket["status"] %>
+                                <% if sitrep == @ticket.status %>
                                   <label class="custom-control custom-radio">
                                     <input class="custom-control-input" type="radio" name="status" value="<%= sitrep %>" checked=""><span class="custom-control-label"><%= sitrep %></span>
                                   </label>
@@ -184,19 +184,19 @@
                         </div>
                       </div>
                       
-                      <% if session[:user_role] == "admin" || session[:user_role] == "project_manager" %>
+                      <% if session[:user].role == "admin" || session[:user].role == "project_manager" %>
                         <div class="form-group row">
                           <label class="col-12 col-form-label">Assigned Developer</label>
                           <div class="col-12">
                             <select class="form-control custom-select py-0" name="developer_id">
-                              <% if @developer_name == "Unassigned" %>
+                              <% if @ticket.developer_name == "Unassigned" %>
                                 <option value="0" selected="selected">Unassigned</option>
                               <% else %>
                                 <option value="0">Unassigned</option>
                               <% end %>
                                   
                               <% @developers.each do |developer| %>
-                                <% if developer["id"] == @developer_id %>
+                                <% if developer["id"] == @ticket.developer_id %>
                                   <option value="<%= developer["id"] %>" selected="selected"><%= developer["name"] %></option>
                                 <% else %>
                                   <option value="<%= developer["id"] %>"><%= developer["name"] %></option>
@@ -206,7 +206,7 @@
                           </div>
                         </div>
                       <% else %>
-                        <input type="hidden" name="developer_id" value="<%= @developer_id %>"/>
+                        <input type="hidden" name="developer_id" value="<%= @ticket.developer_id %>"/>
                       <% end %>
 
                       <div class="form-group row mt-1 ticket-edit-select">
@@ -215,7 +215,7 @@
                           <div class="col-12">
                             <div class="custom-controls-stacked mt-2 pl-5">
                               <% @types.each do |category| %>
-                                <% if category == @ticket["type"] %>
+                                <% if category == @ticket.type %>
                                   <label class="custom-control custom-radio">
                                     <input class="custom-control-input" type="radio" name="type" value="<%= category %>" checked=""><span class="custom-control-label"><%= category %></span>
                                   </label>
@@ -235,7 +235,7 @@
                           <div class="col-12">
                             <div class="custom-controls-stacked mt-2 pl-5">
                               <% @priorities.each do |importance| %>
-                                <% if importance == @ticket["priority"] %>
+                                <% if importance == @ticket.priority %>
                                   <label class="custom-control custom-radio">
                                     <input class="custom-control-input" type="radio" name="priority" value="<%= importance %>" checked=""><span class="custom-control-label"><%= importance %></span>
                                   </label>
@@ -284,17 +284,17 @@
             <div class="col-md-8">
               <div class="card">
                 <div class="card-header card-header-color card-header-color-primary pb-1 pt-4">
-                  <h2 class="title"><%= @ticket["title"].upcase %></h2>
-                  <h5 class="mt-2">Ticket ID: #<%= @ticket["id"] %></h5>
+                  <h2 class="title"><%= @ticket.title.upcase %></h2>
+                  <h5 class="mt-2">Ticket ID: #<%= @ticket.id %></h5>
                 </div>
                 <div class="card-body ticket-detail-main">
                   <dl>
                     <dt>STATUS:</dt>
-                    <dd class="ticket-status <%= css_classify(@ticket['status']) %> font-weight-bold"><%= @ticket["status"] %></dd>
+                    <dd class="ticket-status <%= css_classify(@ticket.status) %> font-weight-bold"><%= @ticket.status %></dd>
                     <dt>TYPE:</dt>
-                    <dd><%= @ticket["type"] %></dd>
+                    <dd><%= @ticket.type %></dd>
                     <dt>PRIORITY:</dt>
-                    <dd class="ticket-priority <%= @ticket['priority'].downcase %> font-weight-bold"><%= @ticket["priority"] %></dd>
+                    <dd class="ticket-priority <%= @ticket.priority.downcase %> font-weight-bold"><%= @ticket.priority %></dd>
                   </dl>
                 </div>
               </div>
@@ -303,18 +303,18 @@
               <div class="card card-border-color card-border-color-primary">
                 <div class="card-header">
                   <span class="card-subtitle pt-0">ASSIGNED TO</span>
-                  <h3 class="title"><%= @developer_name %></h3>
+                  <h3 class="title"><%= @ticket.developer_name %></h3>
                 </div>
                 <div class="card-body">
                   <span class="card-subtitle pt-0">PROJECT</span>
-                  <h4 class="ticket-details-spacer"><%= @project_name %></h4>
+                  <h4 class="ticket-details-spacer"><%= @ticket.project_name %></h4>
 
                   <span class="card-subtitle pt-0">SUBMITTED BY:</span>
-                  <h4 class="ticket-details-spacer"><%= @submitter_name %></h4>
+                  <h4 class="ticket-details-spacer"><%= @ticket.submitter_name %></h4>
                   <span class="card-subtitle pt-0">CREATED ON:</span>
-                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket["created_on"]) %></h5>
+                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket.created_on) %></h5>
                   <span class="card-subtitle pt-0">LAST UPDATED ON:</span>
-                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket["updated_on"]) %></h5>
+                  <h5 class="ticket-details-spacer"><%= parse_timestamp(@ticket.updated_on) %></h5>
                 </div>
               </div>
             </div>
@@ -324,7 +324,7 @@
               <div class="card card-border-color card-border-color-primary">
                 <div class="card-header">Description</div>
                 <div class="card-body">
-                  <p><%= @ticket["description"] %></p>
+                  <p><%= @ticket.description %></p>
                 </div>
               </div>
             </div>
@@ -387,7 +387,7 @@
                             <td class="font-weight-bold"><%= prettify_property_name(history["property"]) %></td>
                             <td class="update-previous"><%= history["previous_value"] %></td>
                             <td class="update-current"><%= history["current_value"] %></td>
-                            <td><%= history["user_id"] %></td>
+                            <td><%= history["name"] %></td>
                           </tr>
                         <% end %>
                       </tbody>

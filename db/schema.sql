@@ -333,7 +333,14 @@ GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
 -- STATEMENT CRAFTING TABLE ------------------------------------------------------------
-GRANT SELECT ON TABLE users, user_logins TO p_m;
-GRANT SELECT ON TABLE users, user_logins TO dev;
-GRANT SELECT ON TABLE users, user_logins TO q_a;
+
+        SELECT tuh.property,
+               tuh.previous_value,
+               tuh.current_value,
+               tuh.updated_on,
+               u.name
+          FROM ticket_update_history AS tuh
+          JOIN users AS u ON (u.id = tuh.user_id)
+         WHERE ticket_id = 1
+      ORDER BY updated_on DESC;
 
