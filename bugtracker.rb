@@ -49,6 +49,16 @@ end
 # -------------HELPER METHODS------------------------------------------------- #
 
 helpers do
+  # What: Parses heroku postgres DATABASE_URL environment variable to a string
+  # Why:  Pass directly into PG:connect for db connection
+  def database_url(url)
+    _, _, tokens, dbname = url.split('/')
+    user, tokens, port = tokens.split(':')
+    password, host = tokens.split('@')
+    "dbname=#{dbname} host=#{host} port=#{port} " +
+    "user=#{user} password=#{password} sslmode=require"
+  end
+
   # What: Parses psql's timestamp data type to a more readable format.
   #       Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
   def parse_timestamp(sql_timestamp)
@@ -375,15 +385,12 @@ end
 before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
-  elsif user_authorized?
+  elsif ENV['RACK_ENV'] == 'development'
     role = session[:user].role
-    @db = PG.connect(dbname: 'bugtrack', user: role,
-                          password: PSQL_ROLE_LOGINS[role])
+    @db = PG.connect(dbname: 'bugtracker', user: role,
+                      password: PSQL_ROLE_LOGINS[role])
   else
-    auth_login = ENV['DB_AUTH_USERNAME']
-    auth_pass = ENV['DB_AUTH_PASSWORD']
-    @db = PG.connect(dbname: 'bugtrack', user: auth_login,
-                          password: auth_pass)
+    @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
 end
 
