@@ -1,6 +1,7 @@
 require 'dotenv/load'
 require 'sinatra'
 require 'sinatra/content_for'
+require 'sinatra/reloader' if development?
 require 'tilt/erubis'
 require 'time'
 require 'securerandom'
@@ -31,7 +32,7 @@ configure do
   set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(64) }
   set :erb, :escape_html => true
   set :bucket, ENV['AWS_BUCKET']
-  # set :show_exceptions, false
+  set :show_exceptions, false
 end
 
 configure(:development) do

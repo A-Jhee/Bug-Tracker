@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-ruby "2.6.3"
+ruby "2.6.6"
 
 gem "sinatra", "~>2.1.0"
 gem "sinatra-contrib"
@@ -18,6 +18,6 @@ gem "aws-sdk-s3"
 gem "bcrypt"
 gem "date"
 
-# group :production do
-#   gem "puma"
-# end
+group :production do
+  gem "puma"
+end
