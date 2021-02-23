@@ -506,7 +506,7 @@ post '/login' do
 
   if error
     session[:error] = error
-    redirect '/login'
+    erb :login, layout: false
   else
     session.clear
     session[:user] = User.new(@db, login['id'])
