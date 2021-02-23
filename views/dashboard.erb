@@ -231,10 +231,6 @@
 
         App.ChartJs = function( ){
 
-          var randomScalingFactor = function() {
-            return Math.round(Math.random() * 100);
-          };
-
           function barChart(){
             //Set the chart colors
             var color1 = tinycolor( "#43f6ae" );
@@ -246,7 +242,7 @@
             var data = {
               labels: <%= @x_axis_dates %>,
               datasets: [{
-                label: "Open",
+                label: "Unresolved",
                 borderColor: color1.toString(),
                 backgroundColor: color1.toString(),
                 data: <%= @open_ticket_count %>
@@ -268,6 +264,13 @@
                   }]
               },
               options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                },
                 elements: {
                   rectangle: {
                     borderWidth: 2,

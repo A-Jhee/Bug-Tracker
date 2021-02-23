@@ -175,12 +175,6 @@
                 </div>
                 <div class="card-body project-preview">
                   <dl>
-                    <dt>PROJECT MANAGER:</dt>
-                    <% if project['project_manager'] %>
-                      <dd class="font-weight-bold"><%= project['project_manager'] %></dd>
-                    <% else %>
-                      <dd class="font-weight-bold pm-not-assigned">Not Assigned</dd>
-                    <% end %>
                     <dt>TOTAL TICKETS:</dt>
                     <dd class="font-weight-bold"><%= project['ticket_count'] %></dd>
                   </dl>

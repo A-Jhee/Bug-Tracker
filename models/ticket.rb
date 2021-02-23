@@ -160,7 +160,7 @@ class Ticket
           SELECT date(created_on), count(id)
             FROM tickets
            WHERE created_on::date = $1
-             AND status = 'Open'
+             AND status <> 'Resolved'
         GROUP BY created_on;
     SQL
     db_connection.exec_params(sql, [ iso_date ])
@@ -172,7 +172,7 @@ class Ticket
             FROM tickets
             JOIN projects ON projects.id = tickets.project_id
            WHERE created_on::date = $1 AND projects.id = $2
-             AND status = 'Open'
+             AND status <> 'Resolved'
         GROUP BY date;
     SQL
     db_connection.exec_params(sql, [ iso_date, project_id ])

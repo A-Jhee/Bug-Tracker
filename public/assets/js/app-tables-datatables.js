@@ -35,6 +35,9 @@ var App = (function () {
     $("#table-project-tickets").dataTable({
       "order": [[ 7, "desc" ]]
     });
+    $("#table-dev-assigned").dataTable({
+      "order": [[ 7, "desc" ]]
+    });
 
     $("#table1").dataTable({
     });

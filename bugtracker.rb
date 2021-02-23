@@ -14,10 +14,10 @@ require_relative 'models/ticket'
 
 ID_ROLE_DELIMITER = '!'
 
-DEMO_LOGINS = [{id: 1, role: 'admin'},
-              {id: 2, role: 'project_manager'},
-              {id: 3, role: 'developer'},
-              {id: 4, role: 'quality_assurance'}]
+DEMO_LOGINS = [{id: '1', role: 'admin'},
+              {id: '2', role: 'project_manager'},
+              {id: '3', role: 'developer'},
+              {id: '4', role: 'quality_assurance'}]
 
 PSQL_ROLE_LOGINS =
   {
@@ -204,7 +204,7 @@ helpers do
       result = Ticket.open_count_for(@db, iso_date, project_id).first
       result ? result['count'].to_i : 0
     end
-    array_for_js(result)
+    result
   end
 
   def all_project_open_ticket_count(project_ids)
@@ -238,7 +238,7 @@ helpers do
     result = (0..13).map do |ind|
       (0...count_arr.size).reduce(0) { |sum, n| sum + count_arr[n][ind].to_i }
     end
-    result
+    array_for_js(result)
   end
 
   def last_3days_tickets_for(project_ids)
@@ -277,6 +277,10 @@ helpers do
 
   def resolved_tickets(tickets)
     tickets.select { |t| t['status'] == 'Resolved' }
+  end
+
+  def dev_assigned_tickets(tickets)
+    tickets.select { |t| t['dev_name'] == session[:user].name }
   end
 
   def unassigned_tickets(tickets)
@@ -386,9 +390,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    role = session[:user].role
-    @db = PG.connect(dbname: 'bugtracker', user: role,
-                      password: PSQL_ROLE_LOGINS[role])
+    @db = PG.connect(dbname: 'bugtrack_test')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -713,19 +715,14 @@ get '/projects/:id' do
 
   @x_axis_dates = array_for_js(x_axis_dates)
   @project = Project.new(@db, params[:id])
-  @project_manager = 'Not Assigned'
   @assigned_users = @project.assigned_users(@db)
   @tickets = all_project_tickets_with_names(@project.id)
 
   @types = Ticket::TICKET_TYPE
   @priorities = Ticket::TICKET_PRIORITY
 
-  @open_ticket_count = project_open_ticket_count(@project.id)
-  @resolved_ticket_count = project_resolved_ticket_count(@project.id)
-
-  @assigned_users.each do |user|
-    @project_manager = user['name'] if user['role'] == 'project_manager'
-  end
+  @open_ticket_count = array_for_js(project_open_ticket_count(@project.id))
+  @resolved_ticket_count = array_for_js(project_resolved_ticket_count(@project.id))
 
   erb :project, layout: false
 end
@@ -787,6 +784,9 @@ get '/tickets' do
     @projects = projects(assigned_projects)
     @unresolved_tickets = unresolved_tickets(all_projects_tickets)
     @resolved_tickets = resolved_tickets(all_projects_tickets)
+    if session[:user].role == 'developer'
+      @dev_assigned_tickets = dev_assigned_tickets(all_projects_tickets)
+    end
   end
 
   if params[:dev] == 'unassigned'

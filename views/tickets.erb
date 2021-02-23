@@ -192,6 +192,9 @@
                 <li class="nav-item"><a class="nav-link active" href="#d-project-ticket" data-toggle="tab" role="tab">Unresolved Tickets</a></li>
                 <li class="nav-item"><a class="nav-link" href="#d-resolved-ticket" data-toggle="tab" role="tab">Resolved Tickets</a></li>
                 <li class="nav-item"><a class="nav-link" href="#d-submitted-ticket" data-toggle="tab" role="tab">My Submitted Tickets</a></li>
+                <% if session[:user].role == "developer" %>
+                  <li class="nav-item"><a class="nav-link" href="#d-dev-assigned-ticket" data-toggle="tab" role="tab">My Assigned Tickets</a></li>
+                <% end %>
               </ul>
               <div class="tab-content">
                 <div class="tab-pane active" id="d-project-ticket" role="tabpanel">
@@ -292,6 +295,7 @@
                     </div>
                   </div>
                 </div>
+
                 <div class="tab-pane" id="d-submitted-ticket" role="tabpanel">
                   <div class="container bugtracker-table">
                     <div class="row">
@@ -341,6 +345,57 @@
                     </div>
                   </div>
                 </div>
+                <% if session[:user].role == "developer" %>
+                  <div class="tab-pane" id="d-dev-assigned-ticket" role="tabpanel">
+                    <div class="container bugtracker-table">
+                      <div class="row">
+                        <div class="col-sm-12">
+                          <div class="card card-default card-table">
+                            <div class="card-header">Tickets Assigned To Me</div>
+                            <div class="card-body">
+                              <div class="table-responsive">
+                                <table class="table table-striped table-hover table-responsive w-100 d-block d-md-table" id="table-dev-assigned">
+                                  <thead>
+                                    <tr>
+                                      <th>ID</th>
+                                      <th>Project</th>
+                                      <th>Title</th>
+                                      <th>Status</th>
+                                      <th>Type</th>
+                                      <th>Priority</th>
+                                      <th>Assigned Dev</th>
+                                      <th>Created On</th>
+                                      <th class="view-ticket-col"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <% @dev_assigned_tickets.each do |ticket| %>
+                                      <tr>
+                                        <td><%= ticket["id"] %></td>
+                                        <td><%= ticket["project_name"] %></td>
+                                        <td class="font-weight-bold"><%= ticket["title"] %></td>
+                                        <td class="ticket-status <%= css_classify(ticket['status']) %>"><%= ticket["status"] %></td>
+                                        <td><%= ticket["type"] %></td>
+                                        <td>
+                                          <ul class="ticket-priority <%= ticket['priority'].downcase %>"><li><%= ticket['priority'] %></li></ul>
+                                        </td>
+                                        <td><%= ticket["dev_name"] %></td>
+                                        <td><%= parse_timestamp(ticket["created_on"])[0, 10] %></td>
+                                        <td>
+                                          <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
+                                        </td>
+                                      </tr>
+                                    <% end %>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
               </div>
             </div>
           </div>
