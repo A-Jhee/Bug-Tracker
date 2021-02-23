@@ -32,7 +32,7 @@ configure do
   set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(64) }
   set :erb, :escape_html => true
   set :bucket, ENV['AWS_BUCKET']
-  set :show_exceptions, false
+  # set :show_exceptions, false
 end
 
 configure(:development) do
@@ -325,6 +325,12 @@ helpers do
   # Why:  return value can be directly plugged into Ticket.create_history
   def update_histories(pre_updates, updates, user_id, ticket_id)
     pre_updates.map do |k, v|
+      if k == :developer_id
+        new_dev_name = User.name(@db, updates[k])
+        k = :developer_name
+        updates[k] = new_dev_name
+        v = User.name(@db, v)
+      end
       [k.to_s, v, updates[k], user_id, ticket_id]
     end
   end
@@ -390,7 +396,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    @db = PG.connect(dbname: 'bugtrack_test')
+    @db = PG.connect(dbname: 'bugtracker')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -645,6 +651,7 @@ get '/projects/:id/users' do
   @project_id = params[:id]
   @project_manager = 'Not Assigned'
   @project = Project.new(@db, @project_id)
+  @tickets = all_project_tickets_with_names(@project.id)
 
   assigned_users = @project.assigned_users(@db)
 
@@ -683,6 +690,7 @@ post '/projects/:id/users' do
       id, role = user.split(ID_ROLE_DELIMITER)
       {'id' => id, 'role' => role}
     end
+
     assigned_users = project.assigned_users(@db)
     assigned_user_ids = assigned_users.map { |user| user['id'] }
 
@@ -694,7 +702,7 @@ post '/projects/:id/users' do
       project.assign_user( @db, new_user['id'], new_user['role'] )
     end
 
-    new_assigned_users_ids = new_assigned_users.map { |user| user['id'] }
+    new_assigned_users_ids = user_assignments.map { |user| user['id'] }
     unassigned_users = assigned_user_ids.reject do |user_id|
       new_assigned_users_ids.include?(user_id)
     end
@@ -873,13 +881,12 @@ post '/tickets/:id' do
   new_status = params[:status]
   new_type = params[:type]
   new_dev_id = params[:developer_id]
+  new_dev_name = User.name(@db, new_dev_id)
 
   EditInfo = Struct.new(:title, :description, :priority,
                          :status, :type, :developer_id)
-
   edit_info = EditInfo.new(new_title, new_desc, new_priority,
                             new_status, new_type, new_dev_id)
-
   updates = create_updates_hash(edit_info, ticket)
   if updates
     pre_updates = pre_update_values(updates, ticket)

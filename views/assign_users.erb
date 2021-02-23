@@ -141,12 +141,8 @@
                 </div>
                 <div class="card-body project-detail-main">
                   <dl>
-                    <dt>MANAGED BY:</dt>
-                    <% if @project_manager == "Not Assigned" %>
-                      <dd class="font-weight-bold pm-not-assigned"><%= @project_manager %></dd>
-                    <% else %>
-                      <dd class="font-weight-bold"><%= @project_manager %></dd>
-                    <% end %>
+                    <dt>TOTAL TICKETS:</dt>
+                    <dd class="font-weight-bold"><%= @tickets.size %></dd>
                   </dl>
                 </div>
               </div>

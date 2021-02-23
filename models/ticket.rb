@@ -20,7 +20,7 @@ class Ticket
       'priority'     => 'Ticket Priority',
       'status'       => 'Ticket Status',
       'type'         => 'Ticket Type',
-      'developer_id' => 'Assigned Developer'
+      'developer_name' => 'Assigned Developer'
     }
 
   attr_reader :id, :status, :title, :description, :type,

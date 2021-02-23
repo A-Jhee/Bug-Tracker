@@ -359,7 +359,7 @@
                             </td>
                             <td><%= ticket["dev_name"] %></td>
                             <td><%= ticket["sub_name"] %></td>
-                            <td><%= ticket["created_on"] %></td>
+                            <td><%= parse_timestamp(ticket["created_on"])[0, 10] %></td>
                             <td>
                               <a href="/tickets/<%= ticket['id'] %>" class="btn btn-rounded btn-space btn-primary">View</a>
                             </td>
