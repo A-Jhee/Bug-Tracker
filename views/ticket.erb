@@ -324,7 +324,9 @@
               <div class="card card-border-color card-border-color-primary">
                 <div class="card-header">Description</div>
                 <div class="card-body">
-                  <p><%= @ticket.description %></p>
+                  <% @ticket.description.split("\n").each do |line| %>
+                    <p><%= line %></p>
+                  <% end %>
                 </div>
               </div>
             </div>

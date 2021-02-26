@@ -24274,7 +24274,7 @@ dd.ticket-priority.low, .ticket-priority.low li {
 }
 
 dd.ticket-priority.high, .ticket-priority.high li {
-  color: #59bfec;
+  color: #00C5FF;
 }
 
 dd.ticket-priority.critical, .ticket-priority.critical li {
@@ -24282,11 +24282,11 @@ dd.ticket-priority.critical, .ticket-priority.critical li {
 }
 
 .ticket-status.openticket {
-  color: #2fc184;
+  color: #25a370;
 }
 
 .ticket-status.inprogress {
-  color: #59bfec;
+  color: #0900FF;
 }
 
 .ticket-status.resolvedticket {

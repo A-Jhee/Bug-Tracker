@@ -110,7 +110,7 @@ helpers do
 
     unless pm_authorized?
       session[:error] = 'You are not authorized for that action'
-      redirect '/dashboard'
+      redirect '/login'
     end
   end
 
@@ -119,7 +119,7 @@ helpers do
 
     unless admin_authorized?
       session[:error] = 'You are not authorized for that action'
-      redirect '/dashboard'
+      redirect '/login'
     end
   end
 
@@ -396,7 +396,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    @db = PG.connect(dbname: 'bugtracker')
+    @db = PG.connect(dbname: 'bugtrack_test')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -407,7 +407,11 @@ after do
 end
 
 get '/' do
-  redirect '/dashboard'
+  redirect '/home'
+end
+
+get '/home' do
+  File.read(File.join('public', 'index.html'))
 end
 
 def tickets_without_dev(tickets)
@@ -515,8 +519,17 @@ post '/login' do
   end
 end
 
-post '/login/demo' do
-  demo_role = params[:demo_login_role]
+get '/login/demo/:role' do
+  demo_role = params[:role]
+  login_for_role(demo_role)
+
+  session[:success] =
+      "Welcome, #{session[:user].name}."
+  redirect '/dashboard'
+end
+
+post '/login/demo/:role' do
+  demo_role = params[:role]
   login_for_role(demo_role)
 
   session[:success] =
@@ -527,7 +540,7 @@ end
 # LOG OUT USER
 get '/logout' do
   session.clear
-  redirect '/login'
+  redirect '/home'
 end
 
 # USER PROFILE
