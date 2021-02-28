@@ -97,7 +97,7 @@ CREATE TABLE tickets (
   developer_id int NOT NULL DEFAULT 0,
   created_on timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_on timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (submitter_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (submitter_id) REFERENCES users (id),
   FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
 );
 
@@ -114,7 +114,7 @@ CREATE TABLE ticket_comments (
   commenter_id int NOT NULL,
   ticket_id int NOT NULL,
   created_on timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (commenter_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (commenter_id) REFERENCES users (id),
   FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE
 );
 
@@ -127,7 +127,7 @@ CREATE TABLE ticket_update_history (
   user_id int NOT NULL,
   ticket_id int NOT NULL,
   updated_on timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users (id),
   FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE
 );
 
@@ -140,7 +140,7 @@ CREATE TABLE ticket_attachments (
   notes text NOT NULL DEFAULT 'n/a',
   ticket_id int NOT NULL,
   uploaded_on timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE,
+  FOREIGN KEY (ticket_id) REFERENCES tickets (id),
   FOREIGN KEY (uploader_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
@@ -332,9 +332,4 @@ CREATE USER quality_assurance
 GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
--- STATEMENT CRAFTING TABLE ------------------------------------------------------------
-
-select current_database();
-
-ALTER DATABASE HEROKU_DATABASE_NAME SET search_path TO bugtracker_schema,public;
-
+-- STATEMENT CRAFTING TABLE -----------------------------------
