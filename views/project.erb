@@ -114,12 +114,12 @@
             <div class="col-md-12 d-flex align-items-center justify-content-between">
               <h2>Project Details</h2>
               <div class="d-flex justify-content-end ticket-option-btn">
+
                 <% if session[:user].role == "admin" || session[:user].role == "project_manager" %>
-                  <form action="/projects/<%= params[:id] %>/users" method="get">
-                    <button type="submit" class="btn btn-space btn-primary">
-                      <i class="icon icon-left s7-add-user mr-2"></i>Assign Users
-                    </button>
-                  </form>
+
+                  <a href="/projects/<%= params[:id] %>/users" class="btn btn-space btn-primary btn-assign-usr">
+                    <i class="icon icon-left s7-add-user mr-2"></i>Assign Users
+                  </a>
 
                   <button class="btn btn-space btn-primary md-trigger ml-2" data-modal="edit-project">
                     <i class="icon icon-left s7-edit"></i> Edit

@@ -396,7 +396,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    @db = PG.connect(dbname: 'bugtrack_test')
+    @db = PG.connect(dbname: 'bugtracker')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -868,13 +868,16 @@ end
 get '/tickets/:id' do
   require_signed_in_user
 
+  @ticket = Ticket.new(@db, params[:id])
+
   @priorities = Ticket::TICKET_PRIORITY
   @statuses = Ticket::TICKET_STATUS
   @types = Ticket::TICKET_TYPE
 
-  @developers = User.all_devs(@db)
+  project = Project.new(@db, @ticket.project_id)
+  @developers = 
+    project.assigned_users(@db).select { |user| user['role'] == 'developer' }
 
-  @ticket = Ticket.new(@db, params[:id])
   @attachments = @ticket.attachments(@db)
   @histories = @ticket.histories(@db)
   @comments = @ticket.comments(@db)
