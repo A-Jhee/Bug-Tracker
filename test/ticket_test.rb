@@ -145,7 +145,7 @@ class TicketTest < Minitest::Test
 
   def test_Ticket_open_count_for
     assert_equal '1', Ticket.open_count_for(@db, @today, '3').first['count']
-    assert_nil Ticket.open_count_for(@db, @today, '1').first
+    assert_equal '1', Ticket.open_count_for(@db, @today, '1').first['count']
   end
 
   def test_Ticket_resolved_count

@@ -28,6 +28,9 @@ class Ticket
               :project_id, :project_name, :developer_id,
               :developer_name, :created_on, :updated_on
 
+  ## params
+  #  -db_connection:   PG::Connection object
+  #  -ticket_id:       string or int
   def initialize(db_connection, ticket_id)
     ticket = db_ticket(db_connection, ticket_id)
 
@@ -51,6 +54,13 @@ class Ticket
     @updated_on = ticket['updated_on']
   end
 
+  ## params
+  #  -db_connection:   PG::Connection object
+  #  -ticket_params:   an array of data required for ticket creation
+  ## purpose
+  #  -creates a new ticket to 'tickets' table
+  ## return object
+  #  -not used
   def self.create(db_connection, ticket_params)
     sql = <<~SQL
       INSERT INTO tickets (status, title, description,
@@ -64,11 +74,15 @@ class Ticket
     db_connection.exec_params(sql, ticket_params)
   end
 
-  # What: Returns PG::Result object that contains only the 
-  #       relevant ticket info for all tickets. Joins with 'projects'
-  #       and 'users' tables to grab project name and user name.
-  # Why:  These are the information necessary for populating all tickets view.
-  #       t.submitter_id is not displayed, but used to filter the view.
+  ## params
+  #  -db_connection:   PG::Connection object
+  ## What: Returns PG::Result object that contains only the 
+  #        relevant ticket info for all tickets. Joins with 'projects'
+  #        and 'users' tables to grab project name and user name.
+  ## Why:  These are the information necessary for populating all tickets view.
+  #        t.submitter_id is not displayed, but used to filter the view.
+  ## return object
+  #  -PG::Result containing all rows of 'tickets' table
   def self.all(db_connection)
     sql = <<~SQL
           SELECT t.id,
@@ -89,6 +103,13 @@ class Ticket
     db_connection.exec(sql)
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -project_id:       string or int
+  ## purpose
+  #  -Returns all tickets submitted for given project_id
+  ## return object
+  #  -PG::Result
   def self.all_for(db_connection, project_id)
     sql = <<~SQL
           SELECT t.id,
@@ -110,6 +131,12 @@ class Ticket
     db_connection.exec_params(sql, [ project_id ])
   end
 
+  ## params
+  #  -db_connection:   PG::Connection object
+  ## purpose
+  #  -Returns all tickets submitted within the last 3 days
+  ## return object
+  #  -PG::Result
   def self.last_3days(db_connection)
     sql = <<~SQL
           SELECT t.id,
@@ -132,6 +159,13 @@ class Ticket
     db_connection.exec_params(sql, [ dates[0], dates[1], dates[2] ])
   end
 
+  ## params
+  #  -db_connection:   PG::Connection object
+  #  -project_id:      string or int
+  ## purpose
+  #  -Returns all tickets submitted within the last 3 days for given project
+  ## return object
+  #  -PG::Result
   def self.last_3days_for(db_connection, project_id)
     sql = <<~SQL
           SELECT t.id,
@@ -155,6 +189,13 @@ class Ticket
     db_connection.exec_params(sql, [ dates[0], dates[1], dates[2], project_id ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -iso_date:         string ISO 8601 date (ex. "2021-03-02")
+  ## purpose
+  #  -Returns all tickets for given date with status that is not 'Resolved'
+  ## return object
+  #  -PG::Result
   def self.open_count(db_connection, iso_date)
     sql = <<~SQL
           SELECT date(created_on), count(id)
@@ -166,6 +207,15 @@ class Ticket
     db_connection.exec_params(sql, [ iso_date ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -iso_date:         string ISO 8601 date (ex. "2021-03-02")
+  #  -project_id:       string or int
+  ## purpose
+  #  -Returns all tickets for given date with status that is not 'Resolved'
+  #   for the given project
+  ## return object
+  #  -PG::Result
   def self.open_count_for(db_connection, iso_date, project_id)
     sql = <<~SQL
           SELECT date(tickets.created_on), count(tickets.id)
@@ -178,6 +228,13 @@ class Ticket
     db_connection.exec_params(sql, [ iso_date, project_id ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -iso_date:         string ISO 8601 date (ex. "2021-03-02")
+  ## purpose
+  #  -Returns all tickets for given date with status of 'Resolved'
+  ## return object
+  #  -PG::Result
   def self.resolved_count(db_connection, iso_date)
     sql = <<~SQL
           SELECT date(updated_on), count(id)
@@ -189,6 +246,15 @@ class Ticket
     db_connection.exec_params(sql, [ iso_date ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -iso_date:         string ISO 8601 date (ex. "2021-03-02")
+  #  -project_id:       string or int
+  ## purpose
+  #  -Returns all tickets for given date with status of 'Resolved'
+  #   for the given project
+  ## return object
+  #  -PG::Result
   def self.resolved_count_for(db_connection, iso_date, project_id)
     sql = <<~SQL
           SELECT date(tickets.created_on), count(tickets.id)
@@ -201,6 +267,15 @@ class Ticket
     db_connection.exec_params(sql, [ iso_date, project_id ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -comment:          string
+  #  -commenter_id:     string or int
+  #  -ticket_id:        string or int
+  ## purpose
+  #  -creates a comment for a ticket in "ticket_comments" table.
+  ## return object
+  #  -not used
   def self.create_comment(db_connection, comment, commenter_id, ticket_id)
     sql = <<~SQL
       INSERT INTO ticket_comments (comment, commenter_id, ticket_id)
@@ -210,12 +285,17 @@ class Ticket
     db_connection.exec_params(sql, [ comment, commenter_id, ticket_id ])
   end
 
-  # What: Inserts ticket history row into ticket_update_history table in
-  #       the database. Each updating field's old and new values is one
-  #       element within 'history_arr'.
-  # Why:  A single ticket update may contain several changes. Each change
-  #       creates an update history. Thus, a single ticket update may require
-  #       creating multiple update history.
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -history_arr:      array of ticket history data
+  ## What: Inserts ticket history row into ticket_update_history table in
+  #        the database. Each updating field's old and new values is one
+  #        element within 'history_arr'.
+  ## Why:  A single ticket update may contain several changes. Each change
+  #        creates an update history. Thus, a single ticket update may require
+  #        creating multiple update history.
+  ## return object
+  #  -not used
   def self.create_history(db_connection, history_arr)
     sql = <<~SQL
       INSERT INTO ticket_update_history
@@ -228,10 +308,18 @@ class Ticket
     end
   end
 
-  # What: A ticket may have file attachments uploaded by users.
-  #       Each file can have notes to go with it.
-  #       File uploads are stored in AWS S3 bucket as objects. 
-  #       'filename' column stores S3 object keys.
+  ## params
+  #  -db_connection:  PG::Connection object
+  #  -obj_key:        string representing AWS S3 object key
+  #  -uploader:       string or int
+  #  -notes:          string
+  #  -ticket:         string or int
+  ## What: A ticket may have file attachments uploaded by users.
+  #        Each file can have notes to go with it.
+  #        File uploads are stored in AWS S3 bucket as objects. 
+  #        'filename' column stores S3 object keys.
+  ## return object
+  #  -not used
   def self.create_attachment(db_connection, obj_key, uploader, notes, ticket)
     sql = <<~SQL
       INSERT INTO ticket_attachments (filename, uploader_id, notes, ticket_id)
@@ -240,6 +328,12 @@ class Ticket
     db_connection.exec_params(sql, [ obj_key, uploader, notes, ticket ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  ## purpose
+  #  -returns all comments submitted for this ticket
+  ## return object
+  #  -PG::Result
   def comments(db_connection)
     sql = <<~SQL
           SELECT tc.id           AS id,
@@ -257,6 +351,12 @@ class Ticket
     db_connection.exec_params(sql, [ id ])
   end
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  ## purpose
+  #  -returns all ticket update histories logged for this ticket
+  ## return object
+  #  -PG::Result
   def histories(db_connection)
     sql = <<~SQL
         SELECT tuh.property,
@@ -272,9 +372,13 @@ class Ticket
     db_connection.exec_params(sql, [ id ])
   end
 
-  # What: Returns PG::Result object that contains data regarding
-  # 'ticket_attachment' table in the database. Actual retrieval/download
-  # of S3 objects are performed within the controller (bugtracker.rb).
+  ## params
+  #  -db_connection:    PG::Connection object
+  ## What: Returns PG::Result object that contains data regarding
+  #        'ticket_attachment' table in the database. Actual retrieval/download
+  #        of S3 objects are performed within the controller (bugtracker.rb).
+  ## return object
+  #  -PG::Result
   def attachments(db_connection)
     sql = <<~SQL
           SELECT ta.id              AS id,
@@ -291,15 +395,20 @@ class Ticket
     db_connection.exec_params(sql, [ id ])
   end
 
-  # What: Given a hash of updating column field names and updating values as
-  #       key:value pairs and ticket id, update psql database
-  
-  # example of an updates_hash
+  ## params
+  #  -db_connection:   PG::Connection object
+  #  -updates_hash:    Hash of updating column field names and updating
+  #                    values as key:value pairs and other relevant info
+  #                    example:
   # updates_hash = {
-  #                  status:      'In Progress',
-  #                  description: 'Create a login functionality with minimum UI',
-  #                  priority:    'Critical'
-  #                }
+  #                 status:      'In Progress',
+  #                 description: 'Create a login functionality with minimum UI',
+  #                 priority:    'Critical'
+  #                 }
+  ## purpose
+  #  -updates this ticket with user submitted edits
+  ## return object
+  #  -not used
   def update(db_connection, updates_hash)
     # update_sql is a private DatabasePersistence method.
     sql = update_sql(updates_hash, id)
@@ -308,11 +417,28 @@ class Ticket
 
   private
 
+  ## params
+  #  -db_connection:    PG::Connection object
+  #  -ticket_id:        string or int
+  ## purpose
+  #  -Returns ticket with given ticket id
+  ## return object
+  #  -Hash containing corresponding row from 'tickets' table
   def db_ticket(db_connection, ticket_id)
     sql = 'SELECT * FROM tickets WHERE id=$1;'
     db_connection.exec_params(sql, [ ticket_id ]).first
   end
 
+  ## params
+  #  -updates_hash:    Hash of updating column field names and updating
+  #                    values as key:value pairs and other relevant info
+  #                    example:
+  # updates_hash = {
+  #                 status:      'In Progress',
+  #                 description: 'Create a login functionality with minimum UI',
+  #                 priority:    'Critical'
+  #                 }
+  #  -ticket_id:      string or int
   # What: Returns a psql statement string, created dynamically for
   #       only the column field names provided as the update_hash keys
   # Why:  psql does not allow column names to be dynamically set, thus

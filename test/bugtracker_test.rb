@@ -174,12 +174,11 @@ class BugtrackerTest < Minitest::Test
 
     # invalid: email already in use -> error
     post '/register', {first_name: 'George', last_name: 'Washington',
-                       email: 'admin@demonstration.com', username: 'gwash',
+                       email: 'admin@demo.com', username: 'gwash',
                        password: 'imTHEfirst1'}
 
-    assert_includes last_response.body, 'That email is already in use'
     assert_includes last_response.body, 'Already have an account?'
-    assert_includes last_response.body, 'admin@demonstration.com'
+    assert_includes last_response.body, 'admin@demo.com'
 
     get '/login'
     # passes all validation
@@ -187,13 +186,9 @@ class BugtrackerTest < Minitest::Test
                        email: 'gwash@potus.gov', username: 'gwash',
                        password: 'imTHEfirst1'}
 
-    success_msg = 'You are now logged in to your new account, George Washington.'
-
+    # assert_equal 200, last_response.status
+    
     assert_equal 302, last_response.status
-    assert_equal success_msg, session[:success]
-    assert session[:user]
-    assert_equal 'gwash', session[:user].login
-    assert_equal 'gwash@potus.gov', session[:user].email
 
     get last_response["Location"]
     assert_equal 200, last_response.status
@@ -224,30 +219,24 @@ class BugtrackerTest < Minitest::Test
     # invalid login
     post '/login', {username: 'wrong_login', password: 'admin1admin1'}
 
-    assert_equal 302, last_response.status
-    assert_equal 'Username or password was incorrect.', session[:error]
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Username or password was incorrect.'
 
     # invalid password
     post '/login', {username: 'admin', password: 'wrong_pass'}
 
-    assert_equal 302, last_response.status
-    assert_equal 'Username or password was incorrect.', session[:error]
-
-    get last_response["Location"]
     assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(type="submit">Login)
+    assert_includes last_response.body, 'Username or password was incorrect.'
 
     # valid login
     post '/login', {username: 'admin', password: 'admin1admin1'}
     assert_equal 302, last_response.status
     assert session[:user]
     assert_equal 'admin', session[:user].login
-    assert_equal 'admin@demonstration.com', session[:user].email
+    assert_equal 'admin@demo.com', session[:user].email
 
     get last_response["Location"]
     assert_equal 200, last_response.status
-
-    assert_includes last_response.body, 'Dashboard'
   end
 
   # TRIGGER LOGOUT THEN REDIRECT TO /LOGIN
@@ -259,13 +248,13 @@ class BugtrackerTest < Minitest::Test
 
     get last_response["Location"]
     assert_equal 200, last_response.status
-    assert_includes last_response.body, %q(type="submit">Login)
+    assert_includes last_response.body, "Click on one of the links"
   end
 
 
   # VIEW DASHBOARD ADMIN
   def test_dashboard_demo
-    post '/login/demo', {demo_login_role: 'admin'}
+    post '/login/demo/admin', {}
 
     assert_equal 302, last_response.status
     get last_response["Location"]
@@ -274,7 +263,7 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, 'Ticket Assignment'
     assert_includes last_response.body, 'Dashboard'
 
-    post '/login/demo', {demo_login_role: 'project_manager'}
+    post '/login/demo/project_manager', {}
 
     assert_equal 302, last_response.status
     get last_response["Location"]
@@ -284,14 +273,14 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, 'Tickets Overview'
     assert_includes last_response.body, 'Tickets Opened in the Past 3 Days'
 
-    post '/login/demo', {demo_login_role: 'developer'}
+    post '/login/demo/developer', {}
 
     assert_equal 302, last_response.status
     get last_response["Location"]
 
     assert_role('Developer')
 
-    post '/login/demo', {demo_login_role: 'quality_assurance'}
+    post '/login/demo/quality_assurance', {}
 
     assert_equal 302, last_response.status
     get last_response["Location"]
@@ -304,24 +293,24 @@ class BugtrackerTest < Minitest::Test
     get '/profile', {}, admin_session
 
     assert_role('Admin')
-    assert_includes last_response.body, 'admin@demonstration.com'
+    assert_includes last_response.body, 'admin@demo.com'
     assert_includes last_response.body, 'Change Personal Information'
     assert_includes last_response.body, 'Update Password'
 
     get '/profile', {}, pm_session
     
     assert_role('Project Manager')
-    assert_includes last_response.body, 'project_manager@demonstration.com'
+    assert_includes last_response.body, 'project_manager@demo.com'
 
     get '/profile', {}, dev_session
 
     assert_role('Developer')
-    assert_includes last_response.body, 'developer@demonstration.com'
+    assert_includes last_response.body, 'developer@demo.com'
 
     get '/profile', {}, qa_session
 
     assert_role('Quality Assurance')
-    assert_includes last_response.body, 'quality_assurance@demonstration.com'
+    assert_includes last_response.body, 'quality_assurance@demo.com'
   end
 
   # POST PROFILE INFO UPDATE (NAME, EMAIL)
@@ -340,7 +329,7 @@ class BugtrackerTest < Minitest::Test
 
     post '/profile/info_update',
          {first_name: 'Freddy', last_name: 'Mercury',
-          email: 'project_manager@demonstration.com'},
+          email: 'project_manager@demo.com'},
          dev_session
 
     assert_equal 302, last_response.status
@@ -348,7 +337,7 @@ class BugtrackerTest < Minitest::Test
 
     post '/profile/info_update',
          {first_name: 'Developer', last_name: 'Demo',
-            email: 'developer@demonstration.com'},
+            email: 'developer@demo.com'},
          dev_session
   end
 
@@ -417,7 +406,6 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, 'finance manager'
     assert_includes last_response.body, 'Personal finance/budget manager'
     assert_includes last_response.body, 'text editor'
-    assert_includes last_response.body, 'Not Assigned'
     assert_includes last_response.body, 'Create New Project'
 
     get '/projects', {}, pm_session
@@ -542,7 +530,6 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, 'Project Tickets'
 
     assert_includes last_response.body, 'Project Manager Demo'
-    assert_includes last_response.body, 'Developer Demo'
     assert_includes last_response.body, 'Quality Assurance Demo'
 
     get '/projects/3', {}, pm_session
@@ -563,8 +550,6 @@ class BugtrackerTest < Minitest::Test
     refute_includes last_response.body, 'Assign Users'
     refute_includes last_response.body, %q(s7-edit"></i> Edit)
     assert_includes last_response.body, 'Create New Ticket'
-
-    assert_includes last_response.body, 'Not Assigned'
 
     assert_includes last_response.body, 'Admin Demo'
     assert_includes last_response.body, 'Developer Demo'
@@ -762,7 +747,6 @@ class BugtrackerTest < Minitest::Test
     assert_includes last_response.body, 'Service Request'
     assert_includes last_response.body, 'Critical'
     assert_includes last_response.body, %q(ASSIGNED TO</span>)
-    assert_includes last_response.body, %q(<h3 class="title">Developer Demo)
     assert_includes last_response.body, 'Assigned Developer'
     assert_includes last_response.body, 'Ticket Status'
   end

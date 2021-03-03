@@ -333,3 +333,9 @@ GRANT q_a TO quality_assurance;
 
 -- ------------------------------------------------------------
 -- STATEMENT CRAFTING TABLE -----------------------------------
+
+    ALTER TABLE ticket_attachments
+DROP CONSTRAINT ticket_attachments_uploader_id_fkey,
+ ADD CONSTRAINT ticket_attachments_uploader_id_fkey 
+    FOREIGN KEY (uploader_id)
+     REFERENCES users(id);

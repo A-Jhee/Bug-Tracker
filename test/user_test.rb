@@ -48,7 +48,7 @@ class UserTest < Minitest::Test
     assert_equal '3', user.id
     assert_equal 'Developer Demo', user.name
     assert_equal 'developer', user.role
-    assert_equal 'developer@demonstration.com', user.email
+    assert_equal 'developer@demo.com', user.email
     assert_equal 'dev', user.login
   end
 
@@ -75,7 +75,7 @@ class UserTest < Minitest::Test
   end
 
   def test_User_unique_email?
-    assert_equal false, User.unique_email?(@db, 'developer@demonstration.com')
+    assert_equal false, User.unique_email?(@db, 'developer@demo.com')
     assert_equal true, User.unique_email?(@db, 't-jeffy@potus.gov')
   end
 
@@ -99,12 +99,12 @@ class UserTest < Minitest::Test
     assert_equal '1', result[0]['id']
     assert_equal 'Admin Demo', result[0]['name']
     assert_equal 'project_manager', result[1]['role']
-    assert_equal 'developer@demonstration.com', result[2]['email']
+    assert_equal 'developer@demo.com', result[2]['email']
     assert_equal 'Quality Assurance Demo', result[3]['name']
   end
 
   def test_User_all_devs
-    result = User.all_devs(@db).first
+    result = User.all_devs(@db)[2]
 
     assert_equal 'Developer Demo', result['name']
     assert_equal '3', result['id']

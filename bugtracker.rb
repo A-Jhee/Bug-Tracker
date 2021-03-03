@@ -49,8 +49,13 @@ end
 # -------------HELPER METHODS------------------------------------------------- #
 
 helpers do
-  # What: Parses heroku postgres DATABASE_URL environment variable to a string
-  # Why:  Pass directly into PG:connect for db connection
+
+  ## params
+  #  -url:   heroku psql DATABASE_URL
+  ## purpose
+  #  -Parses heroku postgres DATABASE_URL environment variable to a string
+  ## return value
+  #  -string that can be directly passed into PG#connect for db connection
   def database_url(url)
     _, _, tokens, dbname = url.split('/')
     user, tokens, port = tokens.split(':')
@@ -59,20 +64,44 @@ helpers do
     "user=#{user} password=#{password} sslmode=require"
   end
 
-  # What: Parses psql's timestamp data type to a more readable format.
-  #       Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
+  ## params
+  #  -url:   heroku psql DATABASE_URL
+  ## purpose
+  #  -Parses psql's timestamp data type to a more readable format.
+  #   Month / Day / Year Hour:Minutes [pm or am]. Drops Seconds.
+  ## return value
+  #  -formatted string (ex. "01/23/2021 12:40 PM")
   def parse_timestamp(sql_timestamp)
     Time.parse(sql_timestamp).strftime("%m/%d/%Y %I:%M %p")
   end
 
+  ## params
+  #  -password:   raw password as string
+  ## purpose
+  #  -uses BCrypt to hash raw password to prep for secure storage.
+  ## return value
+  #  -BCrypt hashed password as string
   def encrypt(password)
     BCrypt::Password.create(password)
   end
 
+  ## params
+  #  -password:        raw password as string
+  #  -hashed_password: hashed password from database
+  ## purpose
+  #  -checks to see if given password matches password in database
+  ## return value
+  #  -true or false
   def correct_password?(password, hashed_password)
     BCrypt::Password.new(hashed_password) == password
   end
 
+  ## params
+  #  -demo_role:   user role as string
+  ## purpose
+  #  -uses role to login for a demo user
+  ## return value
+  #  -not used
   def login_for_role(demo_role)
     DEMO_LOGINS.each do |login|
       if login[:role] == demo_role
@@ -82,22 +111,31 @@ helpers do
     end
   end
 
+  ## return value
+  #  -User class instance stored in session or nil
   def user_authorized?
     session[:user]
   end
 
+  ## purpose
+  #  -check to see if user is logged in, and if so if that user is
+  #   either a project manager or an admin
   def pm_authorized?
     role = session[:user].role
 
     user_authorized? && (role == 'project_manager' || role == 'admin')
   end
 
+  ## purpose
+  #  -check to see if user is logged in, and if so if that user is an admin
   def admin_authorized?
     role = session[:user].role
 
     user_authorized? && (role == 'admin')
   end
 
+  ## purpose
+  #  -requires a user to be logged-in before visiting any routes in the app
   def require_signed_in_user
     unless user_authorized?
       session[:error] = 'You must be logged in to do that'
@@ -105,24 +143,34 @@ helpers do
     end
   end
 
+  ## purpose
+  #  -requires a logged-in user to be project manager
   def required_signed_in_pm
     require_signed_in_user
 
     unless pm_authorized?
       session[:error] = 'You are not authorized for that action'
-      redirect '/login'
+      redirect '/dashboard'
     end
   end
 
+  ## purpose
+  #  -requires a logged-in user to be admin
   def required_signed_in_admin
     require_signed_in_user
 
     unless admin_authorized?
       session[:error] = 'You are not authorized for that action'
-      redirect '/login'
+      redirect '/dashboard'
     end
   end
 
+  ## params
+  #  -project_name:   string
+  ## purpose
+  #  -checks if given project name is alreayd existing in database or not
+  ## return value
+  #  -error message as string or nil
   def error_for(project_name)
     if Project.all(@db).any? { |project| project['name'] == project_name }
       'That project name is already in use. A project name must be unique.'
@@ -131,16 +179,28 @@ helpers do
     end
   end
 
+  ## params
+  #  -project_ids:   array of project id as string or int
+  #                  ex. ['2', '3', '5', 9']
+  ## purpose
+  #  -returns Project class instance object for each project id found in
+  #   the project_ids array
+  ## return value
+  #  -array of Project class instance objects
   def projects(project_ids)
     project_ids.map do |project_id|
       Project.new(@db, project_id)
     end
   end
 
-  # What: Returns an array of hashes. Each array elements are project details
-  #       for the '/projects' view for each of the project id in the argument
-  # Why:  For all users other than admin, they need to only see details of
-  #       projects they are assigned to.
+  ## params
+  #  -project_ids:   array of project id as string or int
+  #                  ex. ['2', '3', '5', 9']
+  ## purpose
+  #  -returns project details for each given project id in the argument array
+  ## return value
+  #  -an array of hashes. Each array elements are project details
+  #   for the '/projects' view for each of the project id in the argument
   def all_details_for(project_ids)
     result =[]
     project_ids.each do |project_id|
@@ -161,6 +221,9 @@ helpers do
     Ticket::TICKET_PROPERTY_NAME_CONVERSION
   end
 
+  ## purpose
+  #  -transforms ticket status into css class name. css class name is
+  #   used to change color of ticket status text
   def css_classify(ticket_status)
     case ticket_status
     when 'Open'               then 'openticket'
@@ -170,16 +233,28 @@ helpers do
     end
   end
 
+  ## params
+  #  -arr:   arr of string objects
+  ## purpose
+  #  -transforms the array into string in the format of JavaScript array
+  #   in order to pass in erb values into JS script
+  ## return value
+  #  -string
   def array_for_js(arr)
     "['#{arr.join('\',\'')}']"
   end
 
+  ## return value
+  #  -array of Date objects for the last 14 days
   def last_14_days
     result = [Date.today - 13]
     13.times { |_| result << result[-1] + 1 }
     result
   end
 
+  ## return value
+  #  -array of string objects of formated month and day
+  #   (ex. ['Feb 21', 'Feb 22', 'Feb 23'...])
   def x_axis_dates
     last_14_days.map do |date|
       iso_hash = Date._iso8601(date.iso8601)
@@ -187,10 +262,18 @@ helpers do
     end
   end
 
+  ## return value
+  #  -array of string objects of date in ISO 8601 format
+  #   (ex. ['2021-02-13', '2021-02-14', '2021-02-15'...])
   def last_14_iso_dates
     last_14_days.map{ |date| date.iso8601 }
   end
 
+  ## purpose
+  #  -returns a JavaScript friendly array that contains all unresolved
+  #   ticket counts for the last 14 days
+  ## return value
+  #  -string representation of JS array
   def all_open_ticket_count
     result = last_14_iso_dates.map do |iso_date|
       open_count = Ticket.open_count(@db, iso_date).first
@@ -199,6 +282,13 @@ helpers do
     array_for_js(result)
   end
 
+  ## params
+  #  -project_id:   string or int
+  ## purpose
+  #  -returns an array of int, each element being unresolved ticket
+  #   count for given project id
+  ## return value
+  #  -array of int
   def project_open_ticket_count(project_id)
     result = last_14_iso_dates.map do |iso_date|
       result = Ticket.open_count_for(@db, iso_date, project_id).first
@@ -207,15 +297,30 @@ helpers do
     result
   end
 
+  ## params
+  #  -project_ids:   array of string or int
+  ## purpose
+  #  -returns a string containing an array of all open ticket counts for
+  #   all the project ids in the argument
+  ## return value
+  #  -string representation of JS array
   def all_project_open_ticket_count(project_ids)
+    # count_arr is an array of open ticket count arrays
+    # ex. [ [1, 4, 2, 5, 6, 11, 13, 14, 55, 21, 38, 99, 121, 31],
+    #       [67, 3, 1, 9, 7, 2, 16, 28, 66, 13, 41, 32, 68, 89], ... ]
     count_arr = project_ids.map { |id| project_open_ticket_count(id) }
 
+    # result is an array of 14 int elements, each the total sum of open
+    # ticket counts for each day (represented as 'ind') for all projects
+    # in the project_ids
     result = (0..13).map do |ind|
       (0...count_arr.size).reduce(0) { |sum, n| sum + count_arr[n][ind].to_i }
     end
     array_for_js(result)
   end
 
+  ## serves similar function as "all_open_ticket_count" method but
+  ## for resolved ticket counts
   def all_resolved_ticket_count
     result = last_14_iso_dates.map do |iso_date|
       resolved_count = Ticket.resolved_count(@db, iso_date).first
@@ -224,6 +329,8 @@ helpers do
     array_for_js(result)
   end
 
+  ## serves similar function as "project_open_ticket_count" method but
+  ## for resolved ticket counts
   def project_resolved_ticket_count(project_id)
     result = last_14_iso_dates.map do |iso_date|
       result = Ticket.resolved_count_for(@db, iso_date, project_id).first
@@ -232,6 +339,8 @@ helpers do
     result
   end
 
+  ## serves similar function as "all_project_open_ticket_count" method but
+  ## for resolved ticket counts
   def all_project_resolved_ticket_count(project_ids)
     count_arr = project_ids.map { |id| project_resolved_ticket_count(id) }
 
@@ -241,6 +350,13 @@ helpers do
     array_for_js(result)
   end
 
+  ## params
+  #  -project_ids:   arr of string or int
+  ## purpose
+  #  -returns an array of Ticket class instance objects for tickets
+  #   submitted within the last 3 days
+  ## return value
+  #  -an array of Ticket class instance objects
   def last_3days_tickets_for(project_ids)
     result = []
     project_ids.each do |project_id|
@@ -250,6 +366,13 @@ helpers do
     result
   end
 
+  ## params
+  #  -project_ids:   arr of string or int
+  ## purpose
+  #  -returns an array of Ticket class instance objects for all tickets
+  #   submitted for the project ids in the argument
+  ## return value
+  #  -an array of Ticket class instance objects
   def all_tickets_for(project_ids)
     result =[]
     project_ids.each do |project_id|
@@ -259,17 +382,30 @@ helpers do
     result
   end
 
-  # What: Returns a ticket hash for a project with a new key:value pair.
-  #       es) {'sub_name' => 'Quality Assurance Demo' }
-  # Why:  To make it more readable for the app user, the submitter_ids 
-  #       found within ticket info used to retrieve corresponding
-  #       user names.
+  ## params
+  #  -project_id:   string or int
+  ## purpose
+  #  -adds a new key:value to Ticket class instance object.
+  #   new key is 'sub_name' and value is the submitter's name taken from
+  #   'users' table
+  #   ex) {'sub_name' => 'Thomas Jefferson' }
+  ## return value
+  #  -an array of Ticket class instance objects
   def all_project_tickets_with_names(project_id)
     Ticket.all_for(@db, project_id).map do |ticket|
       ticket['sub_name'] = User.name(@db, ticket['submitter_id'])
       ticket
     end
   end
+
+#------For following 4 methods-------#
+  ## params
+  #  -tickets:   array of Ticket class instance objects
+  ## purpose
+  #  -selects tickets based on condition
+  ## return value
+  #  -an array of Ticket class instance objects
+#-------------------------------------#
 
   def unresolved_tickets(tickets)
     tickets.select { |t| t['status'] != 'Resolved' }
@@ -287,10 +423,17 @@ helpers do
     tickets.select { |t| t['dev_name'] == 'Unassigned' }
   end
 
-  # What: Detects which ticket info are updated and returns a new hash
-  #       of only the changing info's field name and value as key/value pair
+  ## params
+  #  -edit_info: Hash of key:value pairs for each ticket edit category
+  #  -tickets:   array of Ticket class instance objects
+  ## purpose
+  #  -Detects which ticket info are updated and returns a new hash
+  #   of only the changing info's field name and value as key/value pair
+  ## return value
+  #  -Hash of only the editing ticket info fields and new values OR
+  #   returns nil if there were no changing fields
   def create_updates_hash(edit_info, ticket)
-    # edit_info_hash.keys = [ "id", "title", "description", "priority",
+    # edit_info.keys = [ "id", "title", "description", "priority",
     #                         "status", "type", "developer_id" ]
     if update_exists?(edit_info, ticket)
       edit_info.to_h.reject { |k, v| ticket.send(k) == v }
@@ -299,30 +442,45 @@ helpers do
     end
   end
 
-  # What: Returns True if any of the values in "edit_info" Struct differs
-  #       from the values in "ticket" Ticket class instance.
-  # Why:  To detect if any updates were made. user is allowed to submit
-  #       a form without changing anything.
+  ## params
+  #  -edit_info: Hash of key:value pairs for each ticket edit category
+  #  -tickets:   array of Ticket class instance objects
+  ## purpose
+  #  -returns True if any of the values in "edit_info" Struct differs
+  #   from the values in "ticket" Ticket class instance.
+  ## return value
+  #  -true of false
   def update_exists?(edit_info, ticket)
     edit_info.members.any? do |attr|
       edit_info.send(attr) != ticket.send(attr)
     end
   end
 
-  # What: returns a hash with changing ticket property names as keys,
-  #       and pre-update values as values.
-  # Why:  This information is required to track the before-update-state
-  #       in the ticket history.
+  ## params
+  #  -updates_hash:  Hash of only the updating ticket info fields and new values
+  #  -ticket:        updating Ticket class instance object
+  ## purpose
+  #  -returns a hash with changing ticket property names as keys,
+  #   and pre-update values as values.
+  ## return value
+  #  -Hash of string key and string values
   def pre_update_values(updates_hash, ticket)
     updates_hash.each_with_object({}) do |(k, _), result|
       result[k] = ticket.send(k)
     end
   end
 
-  # What: returns an array of arrays. Each element is an array of each
-  #       updating field name, previous & current value, updater name,
-  #       and 'updated on' timestamp
-  # Why:  return value can be directly plugged into Ticket.create_history
+  ## params
+  #  -pre_updates:  Hash of updating ticket's pre-update values
+  #  -updates:      Hash of only the updating ticket info fields and new values
+  #  -user_id:      string or int
+  #  -ticket_id:    string or int
+  ## purpose
+  #  -returns an array of arrays. Each element is an array of each
+  #   updating field name, previous & current value, updater name,
+  #   and 'updated on' timestamp
+  ## return value
+  #  -array of string. plugs directly into Ticket.create_history
   def update_histories(pre_updates, updates, user_id, ticket_id)
     pre_updates.map do |k, v|
       if k == :developer_id
@@ -335,21 +493,13 @@ helpers do
     end
   end
 
-  # # What: Returns a hash containing all ticket history for a ticket with
-  # #       developer id and updater id swapped for their names.
-  # def get_histories(ticket_id)
-  #   @db.get_ticket_histories(ticket_id).map do |history|
-  #     if history["property"] == "developer_id"
-  #       history["previous_value"] = @db.get_user_name(history["previous_value"])
-  #       history["current_value"] = @db.get_user_name(history["current_value"])
-  #     end
-  #     history["user_id"] = @db.get_user_name(history["user_id"])
-  #     history
-  #   end
-  # end
-
-  # What: Uploads the file content to S3 with the specified object_key.
-  #       Returns boolean true or false.
+  ## params
+  #  -object_key:    string
+  #  -file_content:  binary file content
+  ## purpose
+  #  -Uploads the file content to S3 with the specified object_key.
+  ## return value
+  #  -true or false
   def s3_object_uploaded?(object_key, file_content)
     s3_client = Aws::S3::Client.new
     response = s3_client.put_object(
@@ -369,8 +519,13 @@ helpers do
     return false
   end
 
-  # What: Downloads the object specified by object key from S3, and returns it.
-  #       If no such object exists or an error happens, returns nil.
+  ## params
+  #  -object_key:    string
+  ## purpose
+  #  -Downloads the object specified by object key from S3, and returns it.
+  #   If no such object exists or an error happens, returns nil.
+  ## return value
+  #  -s3 file object or nil
   # Why:  To use returning object as condition in flow control
   #       (returns object -> true, returns nil -> false)
   def s3_object_download(object_key)
@@ -396,7 +551,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    @db = PG.connect(dbname: 'bugtracker')
+    @db = PG.connect(dbname: 'bugtrack_test')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -515,7 +670,7 @@ post '/login' do
     session.clear
     session[:user] = User.new(@db, login['id'])
 
-    redirect '/dashboard'
+    redirect '/login'
   end
 end
 
@@ -965,6 +1120,7 @@ get '/tickets/:id/:filename' do
   end
 end
 
+# CATCH ALL ERROR ROUTE TO DISPLAY 404 PAGE
 error 400..510 do
   File.read(File.join('public', '404.html'))
 end

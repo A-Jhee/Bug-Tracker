@@ -96,7 +96,7 @@ class ProjectTest < Minitest::Test
 
     assert_equal 1, result.ntuples
     assert_equal [["2", "Project Manager Demo", "project_manager",
-                   "project_manager@demonstration.com"]],
+                   "project_manager@demo.com"]],
                  result.values
   end
 
