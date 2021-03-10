@@ -551,7 +551,7 @@ before do
   if ENV['RACK_ENV'] == 'test'
     @db = PG.connect(dbname: 'bugtrack_test')
   elsif ENV['RACK_ENV'] == 'development'
-    @db = PG.connect(dbname: 'bugtrack_test')
+    @db = PG.connect(dbname: 'bugtracker')
   else
     @db = PG.connect(database_url(ENV['DATABASE_URL']))
   end
@@ -670,7 +670,7 @@ post '/login' do
     session.clear
     session[:user] = User.new(@db, login['id'])
 
-    redirect '/login'
+    redirect '/dashboard'
   end
 end
 
