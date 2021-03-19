@@ -424,7 +424,7 @@ helpers do
   end
 
   ## params
-  #  -edit_info: Hash of key:value pairs for each ticket edit category
+  #  -edit_info: EditInfo struct that has new ticket properties as its attr
   #  -tickets:   array of Ticket class instance objects
   ## purpose
   #  -Detects which ticket info are updated and returns a new hash
@@ -433,8 +433,8 @@ helpers do
   #  -Hash of only the editing ticket info fields and new values OR
   #   returns nil if there were no changing fields
   def create_updates_hash(edit_info, ticket)
-    # edit_info.keys = [ "id", "title", "description", "priority",
-    #                         "status", "type", "developer_id" ]
+    # edit_info attr: :title, :description, :priority,
+    #                 :status, :type, :developer_id
     if update_exists?(edit_info, ticket)
       edit_info.to_h.reject { |k, v| ticket.send(k) == v }
     else
