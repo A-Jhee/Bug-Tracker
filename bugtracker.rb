@@ -87,7 +87,7 @@ helpers do
 
   ## params
   #  -password:        raw password as string
-  #  -hashed_password: hashed password from database
+  #  -hashed_password: hashed password from db as string
   ## purpose
   #  -checks to see if given password matches password in database
   ## return value

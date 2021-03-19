@@ -245,10 +245,6 @@ class BugtrackerTest < Minitest::Test
 
     assert_equal 302, last_response.status
     assert session.empty?
-
-    get last_response["Location"]
-    assert_equal 200, last_response.status
-    assert_includes last_response.body, "Click on one of the links"
   end
 
 
