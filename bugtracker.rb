@@ -436,7 +436,7 @@ helpers do
     # edit_info attr: :title, :description, :priority,
     #                 :status, :type, :developer_id
     if update_exists?(edit_info, ticket)
-      edit_info.to_h.reject { |k, v| ticket.send(k) == v }
+      edit_info.reject { |k, v| ticket.send(k) == v }
     else
       nil
     end
@@ -451,8 +451,8 @@ helpers do
   ## return value
   #  -true of false
   def update_exists?(edit_info, ticket)
-    edit_info.members.any? do |attr|
-      edit_info.send(attr) != ticket.send(attr)
+    edit_info.keys.any? do |key|
+      edit_info[key] != ticket.send(key)
     end
   end
 
@@ -1052,12 +1052,16 @@ post '/tickets/:id' do
   new_status = params[:status]
   new_type = params[:type]
   new_dev_id = params[:developer_id]
-  new_dev_name = User.name(@db, new_dev_id)
 
-  EditInfo = Struct.new(:title, :description, :priority,
-                         :status, :type, :developer_id)
-  edit_info = EditInfo.new(new_title, new_desc, new_priority,
-                            new_status, new_type, new_dev_id)
+  edit_info = {
+                :title        => new_title,
+                :description  => new_desc,
+                :priority     => new_priority,
+                :status       => new_status,
+                :type         => new_type,
+                :developer_id => new_dev_id
+              }
+
   updates = create_updates_hash(edit_info, ticket)
   if updates
     pre_updates = pre_update_values(updates, ticket)
